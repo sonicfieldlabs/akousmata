@@ -18,6 +18,14 @@ from akousmata_app.paths import ensure_pyakousma
 
 EDITABLE_FIELDS = {"tags", "annotations", "summary"}
 
+# Meteorological convention, not an ecological claim (see /api/timeline docs).
+_SEASON_BY_MONTH = {
+    12: "DJF", 1: "DJF", 2: "DJF",
+    3: "MAM", 4: "MAM", 5: "MAM",
+    6: "JJA", 7: "JJA", 8: "JJA",
+    9: "SON", 10: "SON", 11: "SON",
+}
+
 
 def _akousma():
     ensure_pyakousma()
@@ -264,6 +272,120 @@ def remove_relation(store, akousma_id: str, rel_type: str, target_akousma_id: st
         else:
             record["lineage"].pop("relations", None)
         store.put(record)
+    return record
+
+
+def timeline(store, *, bucket: str = "day") -> dict[str, Any]:
+    """Memories over time: counts per bucket with apps and top tags — the
+    library's rhythm made visible."""
+    from datetime import datetime
+    import json as _json
+
+    sizes = {"day": 10, "month": 7, "year": 4}
+    if bucket not in {*sizes, "season"}:
+        raise ValueError("bucket must be day, month, season, or year")
+    size = sizes.get(bucket)
+    rows = store.conn.execute("SELECT record FROM akousmata ORDER BY created_at ASC").fetchall()
+    buckets: dict[str, dict[str, Any]] = {}
+    weekdays: dict[str, int] = {}
+    hours: dict[str, int] = {}
+    for row in rows:
+        record = _json.loads(row["record"])
+        timestamp = str(record.get("created_at") or "")
+        try:
+            moment = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        except ValueError:
+            moment = None
+        if bucket == "season" and moment is not None:
+            season = _SEASON_BY_MONTH[moment.month]
+            season_year = moment.year + 1 if moment.month == 12 else moment.year
+            created = f"{season_year}-{season}"
+        else:
+            created = timestamp[:size] if size else ""
+        if not created:
+            continue
+        if moment is not None:
+            weekday = moment.strftime("%A").lower()
+            hour = f"{moment.hour:02d}"
+            weekdays[weekday] = weekdays.get(weekday, 0) + 1
+            hours[hour] = hours.get(hour, 0) + 1
+        entry = buckets.setdefault(created, {"bucket": created, "count": 0, "by_app": {}, "tag_counts": {}})
+        entry["count"] += 1
+        app = (record.get("provenance") or {}).get("originating_app") or "unknown"
+        entry["by_app"][app] = entry["by_app"].get(app, 0) + 1
+        for tag in record.get("tags") or []:
+            entry["tag_counts"][tag] = entry["tag_counts"].get(tag, 0) + 1
+    out = []
+    for entry in buckets.values():
+        tags = sorted(entry.pop("tag_counts").items(), key=lambda item: -item[1])[:4]
+        entry["top_tags"] = [tag for tag, _ in tags]
+        out.append(entry)
+    return {
+        "bucket": bucket,
+        "buckets": out,
+        "total": sum(entry["count"] for entry in out),
+        "recurrence_rhythms": {
+            "by_weekday": weekdays,
+            "by_hour_utc": hours,
+            "peak_weekday": max(weekdays, key=weekdays.get) if weekdays else None,
+            "peak_hour_utc": max(hours, key=hours.get) if hours else None,
+            "note": "Season labels are calendar groupings (DJF/MAM/JJA/SON), not ecological-season claims.",
+        },
+    }
+
+
+def consent_audit(store) -> dict[str, Any]:
+    """Every memory's consent and capture conditions at a glance; the export
+    gate made visible before it bites."""
+    import json as _json
+
+    from akousmata_app.exports import EXPORTABLE_CONSENT
+
+    rows = store.conn.execute("SELECT record FROM akousmata ORDER BY created_at DESC").fetchall()
+    items = []
+    totals: dict[str, int] = {}
+    for row in rows:
+        record = _json.loads(row["record"])
+        provenance = record.get("provenance") or {}
+        consent = str(provenance.get("consent_status") or "unknown")
+        totals[consent] = totals.get(consent, 0) + 1
+        items.append({
+            "akousma_id": record["akousma_id"],
+            "summary": summary_line(record)[:90],
+            "originating_app": provenance.get("originating_app"),
+            "consent_status": consent,
+            "rights_note": provenance.get("rights_note"),
+            "capture_conditions": provenance.get("capture_conditions"),
+            "exportable": consent in EXPORTABLE_CONSENT,
+        })
+    return {
+        "total": len(items),
+        "totals": totals,
+        "exportable": sum(1 for item in items if item["exportable"]),
+        "blocked": sum(1 for item in items if not item["exportable"]),
+        "items": items,
+    }
+
+
+CONSENT_VALUES = {"owned", "licensed", "public_domain", "unknown", "restricted"}
+
+
+def set_consent(store, akousma_id: str, consent_status: str, rights_note: str | None = None) -> dict[str, Any]:
+    """A human curator asserting rights over their own library — the one
+    provenance field the navigator may write, and it says who set it."""
+    if consent_status not in CONSENT_VALUES:
+        raise ValueError(f"consent_status must be one of {sorted(CONSENT_VALUES)}")
+    record = store.get(akousma_id)
+    if record is None:
+        raise KeyError(f"akousma not found: {akousma_id}")
+    record.setdefault("provenance", {})["consent_status"] = consent_status
+    if rights_note is not None:
+        if rights_note.strip():
+            record["provenance"]["rights_note"] = rights_note.strip()
+        else:
+            record["provenance"].pop("rights_note", None)
+    record.setdefault("extensions", {}).setdefault("akousmata.app", {})["consent_set_by"] = "human"
+    store.put(record)
     return record
 
 

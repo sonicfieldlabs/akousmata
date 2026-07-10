@@ -24,6 +24,22 @@ models and runs no agents** — it is the quiet room of the Listening Stack:
   that leaves honest absence).
 - **Graph** — the memory system as a navigable graph: solid edges are
   lineage, dashed edges are kinship, colors are originating apps.
+- **Constellations** — saved, ordered graph selections that remain playable
+  as soundwalks; forgotten members stay visible as meaningful absences.
+- **Timeline** — day, month, calendar-season, and year views plus weekday/hour
+  recurrence rhythms. Calendar seasons are organizational labels, never
+  ecological claims.
+- **Kin search** — accountable similarity from tags, description overlap,
+  duration, stored DSP features, and optional already-computed local
+  embeddings. The navigator never calls a remote embedding service.
+- **Listening diary** — quick human capture with one maintained wiki digest
+  per day.
+- **Consent and export** — an audit of consent, rights notes, and capture
+  conditions; restricted or unknown records are blocked from sanitized,
+  manifest-bearing research packs.
+- **Listen again** — a record with resolvable audio can make a fresh pass
+  through the Oída gateway; the new claims, routes, apparatus, and summary are
+  filed as another listening entry on the same akousma.
 - **Wiki** — an LLM-wiki (after Karpathy's llm-wiki pattern) forked into
   sonic memories: a maintained markdown layer over the records with one page
   per memory, per tag, plus topic syntheses; `index.md` catalog, `log.md`
@@ -42,6 +58,9 @@ models and runs no agents** — it is the quiet room of the Listening Stack:
   things.
 - **Realtime** — the navigator watches the store; memories written by oída
   or germ appear as they happen.
+- **Durable maintenance watcher** — immediately reconciles records created
+  while the app was offline, persists a tie-safe cursor, refreshes diary
+  digests, and runs scheduled lint. Intervals are live-editable in Settings.
 
 ## The store
 
@@ -56,13 +75,13 @@ that protocol, not a fork of it.
 ## Run
 
 ```sh
-pip install -e .                                  # fastapi + uvicorn
-pip install -e <SFL>/earworm/packages/py-akousma  # the store library
-akousmata                                         # http://127.0.0.1:5180
+pip install -e .   # installs the canonical akousma dependency too
+akousmata          # http://127.0.0.1:5180
 ```
 
-In a Sonic Field monorepo layout the sibling `earworm/` checkout is picked
-up automatically. Tests: `python3 -m pytest tests/ -q`.
+Installing Oída installs and mounts this navigator at `/library/`; standalone
+mode remains useful for library-only work. In the Sonic Field monorepo the
+canonical sibling packages are editable. Tests: `uv run pytest -q`.
 
 ## The stack around it
 

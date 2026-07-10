@@ -43,7 +43,7 @@ addressed.
   maintains. The Memex quality — connections as valuable as documents — is
   native here.
 - **Grounding is enforced by contract.** Listening entries carry their
-  contract pins (`akouo/v0.6`, `akousmata/v0.1`); claims carry sources and
+  contract pins (`akouo/v0.6`, `akousmata/v0.2`, `oida/gateway/v0.2`); claims carry sources and
   time anchors upstream. The wiki inherits the stack's epistemic discipline
   instead of hoping for it.
 - **The navigator is also for humans without any LLM.** Library, graph,

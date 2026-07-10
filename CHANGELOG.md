@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.2.0 — Living with the Library
+
+- **Constellations**: saved, ordered selections of memories playable as
+  soundwalks; a forgotten member stays visible as honest absence.
+- **Timeline of listening**: day/month/season/year buckets plus weekday and
+  hour recurrence (season labels are meteorological conventions, not
+  ecological claims).
+- **Kin-search**: accountable resemblance per record from shared tags,
+  description tokens, duration, stored DSP features, and already-computed
+  local embeddings — every score carries its basis; no remote embedder is
+  ever called.
+- **Listening diary**: daily digests written into the wiki's diary layer.
+- **Consent audit + export packs**: a consent overview, per-record consent
+  updates, and sanitized exports (owned/licensed/public-domain only; local
+  paths and secret keys stripped).
+- **Listen-again**: send any record back through the Oída gateway
+  (`oida/gateway/v0.2`) and file the fresh hearing as a new navigator-owned
+  listening entry beside the old one.
+- **Durable watcher**: persisted tie-safe cursor (via py-akousma
+  `changed_since(after_id=…)`), offline-created records reconciled, diary
+  digests refreshed, scheduled lint, live-editable intervals.
+- Store floor raised to `py-akousma >= 0.2.2`; test suite grown to 25
+  hermetic tests.
+
 ## 0.1.0 — The Listening Navigator (initial release)
 
 - Local-first FastAPI app + vanilla static UI (oída's aesthetic) over the

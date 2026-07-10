@@ -14,32 +14,51 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from akousmata_app import AKOUSMATA_CONTRACT, __version__, graph, records, research, wiki
+from akousmata_app import AKOUSMATA_CONTRACT, __version__, constellations, exports, graph, records, research, similar, watcher, wiki
 from akousmata_app.paths import open_store, store_root
 from akousmata_app.settings import load as load_settings
 from akousmata_app.settings import public_view, save as save_settings
 
-STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
+_PACKAGED_STATIC_DIR = Path(__file__).resolve().parent / "static"
+STATIC_DIR = _PACKAGED_STATIC_DIR if _PACKAGED_STATIC_DIR.exists() else Path(__file__).resolve().parents[1] / "static"
 GERM_MODES = ("sound", "prompt", "lineage")
 
-app = FastAPI(title="akousmata", version=__version__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    import os
+
+    settings = load_settings()
+    watcher_settings = settings.get("watcher") or {}
+    if os.getenv("AKOUSMATA_WATCHER", "1") != "0" and watcher_settings.get("enabled", True):
+        watcher.start(
+            ingest_seconds=float(watcher_settings.get("ingest_seconds", 60)),
+            lint_minutes=float(watcher_settings.get("lint_minutes", 30)),
+        )
+    yield
+    watcher.stop()
+
+
+app = FastAPI(title="akousmata", version=__version__, lifespan=lifespan)
 
 
 class ManualMemory(BaseModel):
     summary: str
     notes: str = ""
-    tags: list[str] = []
+    tags: list[str] = Field(default_factory=list)
     heard_at: str | None = None
     place: str | None = None
     kind: str = "heard_live"
     audio_path: str | None = None
-    parent_akousma_ids: list[str] = []
-    relations: list[dict[str, Any]] = []
+    parent_akousma_ids: list[str] = Field(default_factory=list)
+    relations: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class RecordPatch(BaseModel):
@@ -60,8 +79,8 @@ class ForgetBody(BaseModel):
 
 class ResearchBody(BaseModel):
     question: str
-    seed_ids: list[str] = []
-    tags: list[str] = []
+    seed_ids: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
     max_steps: int = 4
 
 
@@ -69,6 +88,7 @@ class SettingsPatch(BaseModel):
     germ_url: str | None = None
     oida_url: str | None = None
     llm: dict[str, Any] | None = None
+    watcher: dict[str, Any] | None = None
 
 
 def _store():
@@ -219,7 +239,7 @@ def forget(akousma_id: str, body: ForgetBody) -> dict[str, Any]:
     store = _store()
     try:
         if not hasattr(store, "forget"):
-            raise HTTPException(status_code=501, detail="py-akousma >= 0.2.1 required for forget()")
+            raise HTTPException(status_code=501, detail="py-akousma >= 0.2.2 required for forget()")
         removed = store.forget(akousma_id, delete_audio=body.delete_audio)
         if not removed:
             raise HTTPException(status_code=404, detail=f"akousma not found: {akousma_id}")
@@ -389,6 +409,312 @@ async def change_events() -> StreamingResponse:
     return StreamingResponse(stream(), media_type="text/event-stream")
 
 
+# ── constellations ───────────────────────────────────────────────────────────
+
+class ConstellationBody(BaseModel):
+    name: str
+    note: str = ""
+    akousma_ids: list[str] = Field(default_factory=list)
+
+
+class ConstellationPatch(BaseModel):
+    name: str | None = None
+    note: str | None = None
+    akousma_ids: list[str] | None = None
+
+
+class MemberBody(BaseModel):
+    akousma_id: str
+
+
+@app.get("/api/constellations")
+def list_constellations() -> dict[str, Any]:
+    return {"constellations": constellations.list_constellations()}
+
+
+@app.post("/api/constellations")
+def create_constellation(body: ConstellationBody) -> dict[str, Any]:
+    try:
+        return {"constellation": constellations.create(body.name, body.note, body.akousma_ids)}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/constellations/{constellation_id}")
+def get_constellation(constellation_id: str) -> dict[str, Any]:
+    item = constellations.get(constellation_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail=f"constellation not found: {constellation_id}")
+    store = _store()
+    try:
+        return {"constellation": constellations.resolve(store, item)}
+    finally:
+        store.close()
+
+
+@app.patch("/api/constellations/{constellation_id}")
+def patch_constellation(constellation_id: str, body: ConstellationPatch) -> dict[str, Any]:
+    try:
+        return {"constellation": constellations.update(constellation_id, name=body.name, note=body.note, akousma_ids=body.akousma_ids)}
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/api/constellations/{constellation_id}/records")
+def add_constellation_member(constellation_id: str, body: MemberBody) -> dict[str, Any]:
+    try:
+        return {"constellation": constellations.add_member(constellation_id, body.akousma_id)}
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.delete("/api/constellations/{constellation_id}/records/{akousma_id}")
+def remove_constellation_member(constellation_id: str, akousma_id: str) -> dict[str, Any]:
+    try:
+        return {"constellation": constellations.remove_member(constellation_id, akousma_id)}
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.delete("/api/constellations/{constellation_id}")
+def delete_constellation(constellation_id: str) -> dict[str, Any]:
+    if not constellations.delete(constellation_id):
+        raise HTTPException(status_code=404, detail=f"constellation not found: {constellation_id}")
+    return {"deleted": constellation_id}
+
+
+# ── timeline + similarity ────────────────────────────────────────────────────
+
+@app.get("/api/timeline")
+def get_timeline(bucket: str = "day") -> dict[str, Any]:
+    if bucket not in ("day", "month", "season", "year"):
+        raise HTTPException(status_code=400, detail="bucket must be day, month, season, or year")
+    store = _store()
+    try:
+        return records.timeline(store, bucket=bucket)
+    finally:
+        store.close()
+
+
+@app.get("/api/records/{akousma_id}/similar")
+def get_similar(akousma_id: str, limit: int = 10) -> dict[str, Any]:
+    store = _store()
+    try:
+        try:
+            return {"similar": similar.similar(store, akousma_id, limit=limit)}
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+    finally:
+        store.close()
+
+
+# ── listening diary ──────────────────────────────────────────────────────────
+
+class DiaryBody(BaseModel):
+    text: str
+    tags: list[str] = Field(default_factory=list)
+    place: str | None = None
+
+
+@app.post("/api/diary")
+def diary_entry(body: DiaryBody) -> dict[str, Any]:
+    text = body.text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="the diary needs at least a line")
+    summary = text.splitlines()[0][:120]
+    store = _store()
+    try:
+        record = records.create_manual_memory(
+            store,
+            summary=summary,
+            notes=text,
+            tags=list(dict.fromkeys([*body.tags, "diary"])),
+            place=body.place,
+            kind="diary",
+        )
+        wiki.ingest(store, record["akousma_id"])
+        day = str(record.get("created_at") or "")[:10]
+        digest = wiki.diary_digest(store, day)
+        return {"record": record, "day": day, "digest": digest}
+    finally:
+        store.close()
+
+
+@app.get("/api/diary/{day}")
+def diary_day(day: str) -> dict[str, Any]:
+    page = wiki.read_page("diary", day)
+    if page is None:
+        store = _store()
+        try:
+            page = wiki.diary_digest(store, day)
+        finally:
+            store.close()
+    return {"day": day, "markdown": page}
+
+
+# ── consent audit + export packs ─────────────────────────────────────────────
+
+class ConsentBody(BaseModel):
+    consent_status: str
+    rights_note: str | None = None
+
+
+@app.get("/api/audit/consent")
+def audit_consent() -> dict[str, Any]:
+    store = _store()
+    try:
+        return records.consent_audit(store)
+    finally:
+        store.close()
+
+
+@app.post("/api/records/{akousma_id}/consent")
+def set_consent(akousma_id: str, body: ConsentBody) -> dict[str, Any]:
+    store = _store()
+    try:
+        try:
+            record = records.set_consent(store, akousma_id, body.consent_status, body.rights_note)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        wiki.ingest(store, akousma_id)
+        return {"record": record}
+    finally:
+        store.close()
+
+
+class ExportBody(BaseModel):
+    name: str
+    akousma_ids: list[str] = Field(default_factory=list)
+    constellation_id: str | None = None
+    tag: str | None = None
+    include_audio: bool = True
+    include_wiki: bool = True
+
+
+@app.post("/api/export")
+def export_pack(body: ExportBody) -> dict[str, Any]:
+    store = _store()
+    try:
+        ids = list(body.akousma_ids)
+        if body.constellation_id:
+            item = constellations.get(body.constellation_id)
+            if item is None:
+                raise HTTPException(status_code=404, detail=f"constellation not found: {body.constellation_id}")
+            ids.extend(item.get("akousma_ids") or [])
+        if body.tag:
+            ids.extend(record["akousma_id"] for record in store.query(tag=body.tag, limit=1000))
+        if not ids:
+            raise HTTPException(status_code=400, detail="nothing selected: pass akousma_ids, a constellation_id, or a tag")
+        result = exports.build_pack(
+            store,
+            name=body.name,
+            akousma_ids=ids,
+            include_audio=body.include_audio,
+            include_wiki=body.include_wiki,
+        )
+        wiki.log_append("export", body.name, f"{result['included']} included, {len(result['excluded'])} blocked")
+        return result
+    finally:
+        store.close()
+
+
+@app.get("/api/exports")
+def list_exports() -> dict[str, Any]:
+    return {"packs": exports.list_packs()}
+
+
+# ── oída round-trip: listen again ────────────────────────────────────────────
+
+class ListenAgainBody(BaseModel):
+    preset: str = "basic"
+
+
+@app.post("/api/records/{akousma_id}/listen-again")
+def listen_again(akousma_id: str, body: ListenAgainBody) -> dict[str, Any]:
+    import json as _json
+    import time as _time
+    import urllib.request
+
+    store = _store()
+    try:
+        record = store.get(akousma_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail=f"akousma not found: {akousma_id}")
+        path = records.resolve_audio_path(store, record)
+        if path is None:
+            raise HTTPException(status_code=409, detail="this memory has no resolvable audio to listen to again")
+        oida_url = str(load_settings().get("oida_url") or "http://127.0.0.1:8765").rstrip("/")
+        request = urllib.request.Request(
+            f"{oida_url}/gateway/listen",
+            data=_json.dumps({"path": str(path), "route_preset": body.preset, "remember": False}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=240) as response:
+                gateway_result = _json.loads(response.read().decode("utf-8"))
+        except Exception as exc:  # noqa: BLE001 — any transport failure reads the same to the user
+            raise HTTPException(status_code=502, detail=f"oída did not answer at {oida_url}: {exc}") from exc
+
+        event = gateway_result.get("listening_event") if isinstance(gateway_result.get("listening_event"), dict) else {}
+        command_output = gateway_result.get("command_output") if isinstance(gateway_result.get("command_output"), dict) else {}
+        aggregate = event.get("aggregate") if isinstance(event.get("aggregate"), dict) else {}
+        compact = {
+            "route_preset": body.preset,
+            "event_id": event.get("id"),
+            "title": aggregate.get("title"),
+            "short_summary": aggregate.get("short_summary"),
+            "detailed_summary": aggregate.get("detailed_summary"),
+            "claims": command_output.get("claim_summary"),
+            "routes": event.get("routes"),
+            "apparatus": (command_output.get("outputs") or [{}])[0].get("apparatus") if isinstance(command_output.get("outputs"), list) else None,
+            "perception_path": gateway_result.get("perception_path"),
+            "source_contract": gateway_result.get("contract"),
+        }
+        listening = record.setdefault("listening", {})
+        # The navigator owns this wrapper entry. Oída owns the embedded pass,
+        # whose gateway contract is pinned inside the payload; never write or
+        # rewrite another producer's namespace from Akousmata.
+        namespace = "akousmata.listen_again"
+        counter = 2
+        while namespace in listening:
+            namespace = f"akousmata.listen_again.{counter}"
+            counter += 1
+        listening[namespace] = {
+            "contract": "akousmata/v0.2",
+            "created_at": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
+            "summary": compact.get("short_summary") or compact.get("title") or "fresh oída pass",
+            "payload": compact,
+        }
+        store.put(record)
+        wiki.ingest(store, akousma_id)
+        return {
+            "namespace": namespace,
+            "listening": listening[namespace],
+            "record": record,
+            "gateway": {"contract": gateway_result.get("contract"), "perception_path": gateway_result.get("perception_path")},
+        }
+    finally:
+        store.close()
+
+
+# ── watcher status ───────────────────────────────────────────────────────────
+
+@app.get("/api/watcher")
+def watcher_status() -> dict[str, Any]:
+    return watcher.status()
+
+
+@app.post("/api/watcher/run")
+def watcher_run(lint: bool = True) -> dict[str, Any]:
+    try:
+        return watcher.run_once(lint=lint)
+    except Exception as exc:  # noqa: BLE001 — surfaced as a maintenance failure
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
 # ── settings ─────────────────────────────────────────────────────────────────
 
 @app.get("/api/settings")
@@ -398,11 +724,22 @@ def get_settings() -> dict[str, Any]:
 
 @app.put("/api/settings")
 def put_settings(body: SettingsPatch) -> dict[str, Any]:
+    import os
+
     patch = {k: v for k, v in body.model_dump().items() if v is not None}
     llm = patch.get("llm")
     if isinstance(llm, dict) and str(llm.get("api_key") or "").startswith("•"):
         llm.pop("api_key")  # masked value round-tripped from the UI: keep the stored key
-    return public_view(save_settings(patch))
+    saved = save_settings(patch)
+    watcher_settings = saved.get("watcher") or {}
+    if os.getenv("AKOUSMATA_WATCHER", "1") != "0" and watcher_settings.get("enabled", True):
+        watcher.restart(
+            ingest_seconds=float(watcher_settings.get("ingest_seconds", 60)),
+            lint_minutes=float(watcher_settings.get("lint_minutes", 30)),
+        )
+    else:
+        watcher.stop()
+    return public_view(saved)
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

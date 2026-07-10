@@ -6,6 +6,8 @@ objects/
 wiki/
 settings.json
 exports/
+constellations.json
+watcher-state.json
 
 # python
 .venv/

@@ -26,7 +26,15 @@ DEFAULTS: dict[str, Any] = {
         # prints the answer (e.g. `codex exec -`, `opencode run`).
         "command": "",
     },
+    "watcher": {
+        # the background maintainer: auto-ingest fresh records into the wiki,
+        # refresh diary digests, and lint on an interval.
+        "enabled": True,
+        "ingest_seconds": 60,
+        "lint_minutes": 30,
+    },
 }
+_NESTED = ("llm", "watcher")
 
 
 def load() -> dict[str, Any]:
@@ -36,8 +44,8 @@ def load() -> dict[str, Any]:
         try:
             stored = json.loads(path.read_text(encoding="utf-8"))
             for key, value in stored.items():
-                if key == "llm" and isinstance(value, dict):
-                    data["llm"].update(value)
+                if key in _NESTED and isinstance(value, dict):
+                    data[key].update(value)
                 else:
                     data[key] = value
         except (OSError, json.JSONDecodeError):
@@ -48,8 +56,8 @@ def load() -> dict[str, Any]:
 def save(patch: dict[str, Any]) -> dict[str, Any]:
     data = load()
     for key, value in patch.items():
-        if key == "llm" and isinstance(value, dict):
-            data["llm"].update(value)
+        if key in _NESTED and isinstance(value, dict):
+            data[key].update(value)
         elif key in DEFAULTS:
             data[key] = value
     settings_path().write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

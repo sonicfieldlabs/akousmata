@@ -48,6 +48,7 @@ def _dirs() -> dict[str, Path]:
         "tags": root / "tags",
         "topics": root / "topics",
         "research": root / "research",
+        "diary": root / "diary",
     }
     for path in dirs.values():
         path.mkdir(parents=True, exist_ok=True)
@@ -260,7 +261,13 @@ def lint(store) -> dict[str, Any]:
 
 def read_page(kind: str, name: str) -> str | None:
     dirs = _dirs()
-    folder = {"record": dirs["records"], "tag": dirs["tags"], "topic": dirs["topics"], "research": dirs["research"]}.get(kind)
+    folder = {
+        "record": dirs["records"],
+        "tag": dirs["tags"],
+        "topic": dirs["topics"],
+        "research": dirs["research"],
+        "diary": dirs["diary"],
+    }.get(kind)
     if folder is None:
         return None
     path = folder / f"{name}.md"
@@ -275,6 +282,45 @@ def write_topic(slug: str, markdown: str) -> str:
     return str(path)
 
 
+def diary_digest(store, day: str) -> str:
+    """One day's page: diary entries first, then everything else the library
+    gained that day — the listening diary as a maintained wiki layer."""
+    dirs = _dirs()
+    records = store.query(since=f"{day}T00:00:00Z", until=f"{day}T23:59:59Z", limit=500)
+    diary_entries = []
+    other = []
+    for record in records:
+        entry = (record.get("listening") or {}).get("human.note") or {}
+        payload = entry.get("payload") if isinstance(entry.get("payload"), dict) else {}
+        if payload.get("kind") == "diary":
+            diary_entries.append(record)
+        else:
+            other.append(record)
+    lines = [f"# diary — {day}", ""]
+    if diary_entries:
+        lines.append("## What you listened")
+        for record in diary_entries:
+            entry = record["listening"]["human.note"]
+            payload = entry.get("payload") or {}
+            when = str(record.get("created_at") or "")[11:16]
+            lines.append(f"- **{when}** [[record:{record['akousma_id']}|{summary_line(record)[:80]}]]")
+            notes = payload.get("notes")
+            if isinstance(notes, str) and notes.strip() and notes.strip() != summary_line(record):
+                lines.append(f"  - {notes.strip()[:300]}")
+    else:
+        lines.append("_no diary entries this day_")
+    if other:
+        lines += ["", "## What the library gained"]
+        for record in other:
+            app = (record.get("provenance") or {}).get("originating_app") or "?"
+            lines.append(f"- [[record:{record['akousma_id']}|{summary_line(record)[:80]}]] ({app})")
+    lines += ["", f"_{len(diary_entries)} diary entries · {len(other)} other memories · refreshed {_now()}_"]
+    page = "\n".join(lines) + "\n"
+    (dirs["diary"] / f"{day}.md").write_text(page, encoding="utf-8")
+    log_append("diary", day, f"{len(diary_entries)} entries, {len(other)} other memories")
+    return page
+
+
 def list_pages() -> dict[str, list[str]]:
     dirs = _dirs()
     return {
@@ -282,5 +328,6 @@ def list_pages() -> dict[str, list[str]]:
         "tags": sorted(p.stem for p in dirs["tags"].glob("*.md")),
         "topics": sorted(p.stem for p in dirs["topics"].glob("*.md")),
         "research": sorted(p.stem for p in dirs["research"].glob("*.md")),
+        "diary": sorted((p.stem for p in dirs["diary"].glob("*.md")), reverse=True),
         "has_index": (dirs["root"] / "index.md").exists(),
     }

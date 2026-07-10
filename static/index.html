@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>akousmata — listening navigator</title>
-  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="static/styles.css" />
 </head>
 <body>
   <div class="app">
@@ -18,9 +18,13 @@
 
     <nav class="tabs" id="tabs">
       <button data-tab="library" class="active">Library</button>
+      <button data-tab="constellations">Constellations</button>
+      <button data-tab="timeline">Timeline</button>
       <button data-tab="graph">Graph</button>
       <button data-tab="wiki">Wiki</button>
+      <button data-tab="diary">Diary</button>
       <button data-tab="research">Research</button>
+      <button data-tab="audit">Audit</button>
       <button data-tab="settings">Settings</button>
     </nav>
 
@@ -74,6 +78,36 @@
       </div>
     </main>
 
+    <main id="tab-constellations" hidden>
+      <div class="section">
+        <h2>New constellation — memories that belong together, playable as a walk</h2>
+        <div class="row">
+          <input type="text" id="c-name" placeholder="name (e.g. harbor dawn walk)" style="flex:1; min-width:200px" />
+          <input type="text" id="c-note" placeholder="why these belong together (optional)" style="flex:2; min-width:240px" />
+          <button class="btn primary" id="c-create">Create</button>
+          <span class="note" id="c-status"></span>
+        </div>
+      </div>
+      <div class="library">
+        <div class="list-pane"><div id="con-list"></div></div>
+        <div class="detail-pane"><div id="con-detail" class="detail"><div class="empty">select a constellation — add memories to it from the library detail</div></div></div>
+      </div>
+    </main>
+
+    <main id="tab-timeline" hidden>
+      <div class="row" style="padding: 10px 0">
+        <select id="tl-bucket">
+          <option value="day">by day</option>
+          <option value="month" selected>by month</option>
+          <option value="season">by season</option>
+          <option value="year">by year</option>
+        </select>
+        <span class="note" id="tl-status"></span>
+      </div>
+      <p class="note" id="tl-rhythms"></p>
+      <div id="timeline"></div>
+    </main>
+
     <main id="tab-graph" hidden>
       <div class="graph-legend">
         <span><span class="legend-swatch"></span>lineage (made from)</span>
@@ -97,6 +131,28 @@
       </div>
     </main>
 
+    <main id="tab-diary" hidden>
+      <div class="section">
+        <h2>Listening diary — what did today sound like?</h2>
+        <div class="form-grid">
+          <label>entry</label><textarea id="d-text" placeholder="what you listened today, in your words…"></textarea>
+          <label>tags</label><input type="text" id="d-tags" placeholder="comma, separated (diary is always added)" />
+          <label>place</label><input type="text" id="d-place" placeholder="where (optional)" />
+          <label></label>
+          <div class="row"><button class="btn primary" id="d-save">Write in the diary</button><span class="note" id="d-status"></span></div>
+        </div>
+      </div>
+      <div class="section">
+        <h2>Daily digest</h2>
+        <div class="row">
+          <input type="date" id="d-day" />
+          <button class="btn" id="d-load">Open day</button>
+          <span id="d-days"></span>
+        </div>
+        <div class="wiki-body" id="d-digest"><div class="empty">each day gets a page: what you listened, and what the library gained</div></div>
+      </div>
+    </main>
+
     <main id="tab-research" hidden>
       <div class="section">
         <h2>Ask the library</h2>
@@ -117,6 +173,27 @@
       </div>
     </main>
 
+    <main id="tab-audit" hidden>
+      <div class="row" style="padding: 10px 0">
+        <button class="btn" id="a-refresh">Refresh</button>
+        <label class="note"><input type="checkbox" id="a-blocked" /> only blocked from export</label>
+        <span class="note" id="a-totals"></span>
+      </div>
+      <div id="audit-list"></div>
+      <div class="section">
+        <h2>Export packs — only what consent allows leaves the store</h2>
+        <div class="row">
+          <input type="text" id="x-name" placeholder="pack name" />
+          <input type="text" id="x-tag" placeholder="tag to export" />
+          <label class="note"><input type="checkbox" id="x-audio" checked /> audio</label>
+          <label class="note"><input type="checkbox" id="x-wiki" checked /> wiki pages</label>
+          <button class="btn primary" id="x-build">Build pack</button>
+          <span class="note" id="x-status"></span>
+        </div>
+        <div id="pack-list"></div>
+      </div>
+    </main>
+
     <main id="tab-settings" hidden>
       <div class="section">
         <h2>Connections</h2>
@@ -124,6 +201,16 @@
           <label>germ url</label><input type="text" id="s-germ" />
           <label>oída url</label><input type="text" id="s-oida" />
         </div>
+      </div>
+      <div class="section">
+        <h2>Watcher — background maintenance (auto-ingest, diary digests, lint)</h2>
+        <div class="form-grid">
+          <label>enabled</label>
+          <select id="s-watch"><option value="true">on</option><option value="false">off</option></select>
+          <label>ingest every</label><input type="number" id="s-ingest" min="10" step="10" />
+          <label>lint every</label><input type="number" id="s-lintm" min="5" step="5" />
+        </div>
+        <p class="note" id="s-watch-status"></p>
       </div>
       <div class="section">
         <h2>LLM (bring your own key — optional; the library works without it)</h2>
@@ -146,6 +233,6 @@
     </main>
   </div>
   <div class="toast" id="toast"></div>
-  <script src="/static/app.js"></script>
+  <script src="static/app.js"></script>
 </body>
 </html>

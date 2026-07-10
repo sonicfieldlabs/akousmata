@@ -27,8 +27,11 @@ function toast(message) {
   setTimeout(() => node.classList.remove("show"), 2600);
 }
 
+const APP_ROOT = new URL(".", window.location.href).pathname.replace(/\/$/, "");
+const appPath = (path) => `${APP_ROOT}${path.startsWith("/") ? path : `/${path}`}`;
+
 async function api(path, options = {}) {
-  const response = await fetch(path, {
+  const response = await fetch(appPath(path), {
     headers: { "Content-Type": "application/json" },
     ...options,
   });
@@ -42,14 +45,20 @@ async function api(path, options = {}) {
 
 /* ── tabs ─────────────────────────────────────────────────────────────── */
 
+const TABS = ["library", "constellations", "timeline", "graph", "wiki", "diary", "research", "audit", "settings"];
+
 $("tabs").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-tab]");
   if (!button) return;
   state.tab = button.dataset.tab;
   for (const item of $("tabs").querySelectorAll("button")) item.classList.toggle("active", item === button);
-  for (const name of ["library", "graph", "wiki", "research", "settings"]) $(`tab-${name}`).hidden = name !== state.tab;
+  for (const name of TABS) $(`tab-${name}`).hidden = name !== state.tab;
+  if (state.tab === "constellations") loadConstellations();
+  if (state.tab === "timeline") loadTimeline();
   if (state.tab === "graph") loadGraph(state.selected || null);
   if (state.tab === "wiki") loadWiki();
+  if (state.tab === "diary") loadDiary();
+  if (state.tab === "audit") { loadAudit(); loadPacks(); }
   if (state.tab === "settings") loadSettings();
 });
 
@@ -148,7 +157,7 @@ function renderDetail(data) {
   if (data.audio_available) {
     const audio = el("audio");
     audio.controls = true;
-    audio.src = `/api/audio/${record.akousma_id}`;
+    audio.src = appPath(`/api/audio/${record.akousma_id}`);
     pane.append(audio);
   }
 
@@ -251,6 +260,57 @@ function renderDetail(data) {
   section.append(addRow);
   pane.append(section);
 
+  // kin by resemblance (deterministic similarity)
+  const simSection = el("div", "section linklist");
+  simSection.append(el("h2", "", "kin by resemblance"));
+  const simBody = el("div", "note", "listening for echoes…");
+  simSection.append(simBody);
+  pane.append(simSection);
+  api(`/api/records/${record.akousma_id}/similar?limit=6`).then((data) => {
+    simBody.replaceChildren();
+    if (!data.similar.length) {
+      simBody.append(el("span", "note", "nothing resembles this yet"));
+      return;
+    }
+    for (const hit of data.similar) {
+      const row = el("div", "sim-row");
+      const bar = el("span", "sim-bar");
+      bar.style.width = `${Math.round(Math.min(1, hit.score) * 60)}px`;
+      row.append(bar);
+      row.append(linkTo(hit.card.akousma_id, hit.card.summary, false));
+      row.append(el("span", "note", ` — ${hit.basis.join(", ")}`));
+      simBody.append(row);
+    }
+  }).catch(() => { simBody.textContent = "similarity unavailable"; });
+
+  // consent & rights
+  const consentSection = el("div", "section");
+  consentSection.append(el("h2", "", "consent & rights"));
+  const consentRow = el("div", "row");
+  const consentSelect = el("select");
+  for (const value of ["unknown", "owned", "licensed", "public_domain", "restricted"]) {
+    consentSelect.append(new Option(value.replaceAll("_", " "), value));
+  }
+  consentSelect.value = provenance.consent_status || "unknown";
+  const rightsInput = el("input");
+  rightsInput.type = "text";
+  rightsInput.placeholder = "rights note (who consented, what license…)";
+  rightsInput.style.flex = "1";
+  rightsInput.value = provenance.rights_note || "";
+  const consentSave = el("button", "btn", "set consent");
+  consentSave.addEventListener("click", async () => {
+    await api(`/api/records/${record.akousma_id}/consent`, {
+      method: "POST",
+      body: JSON.stringify({ consent_status: consentSelect.value, rights_note: rightsInput.value.trim() || null }),
+    });
+    toast(`consent: ${consentSelect.value}`);
+    selectRecord(record.akousma_id);
+  });
+  consentRow.append(consentSelect, rightsInput, consentSave);
+  consentSection.append(consentRow);
+  consentSection.append(el("p", "note", "export packs only ship owned / licensed / public domain memories"));
+  pane.append(consentSection);
+
   // notes (annotations)
   const noteSection = el("div", "section");
   noteSection.append(el("h2", "", "notes"));
@@ -297,6 +357,65 @@ function renderDetail(data) {
   });
   actions.append(forget);
   pane.append(actions);
+
+  // listen again (oída round-trip) — only for memories with audio
+  if (data.audio_available) {
+    const againRow = el("div", "section row");
+    againRow.append(el("span", "note", "oída, listen to this again with"));
+    const presetInput = el("input");
+    presetInput.type = "text";
+    presetInput.value = "basic";
+    presetInput.setAttribute("list", "oida-presets");
+    presetInput.style.width = "110px";
+    const datalist = el("datalist");
+    datalist.id = "oida-presets";
+    for (const preset of ["basic", "field", "voice", "music", "recall", "full"]) datalist.append(new Option(preset, preset));
+    const againButton = el("button", "btn", "listen again");
+    againButton.addEventListener("click", async () => {
+      againButton.disabled = true;
+      againButton.textContent = "oída is listening…";
+      try {
+        const result = await api(`/api/records/${record.akousma_id}/listen-again`, {
+          method: "POST",
+          body: JSON.stringify({ preset: presetInput.value.trim() || "basic" }),
+        });
+        toast(`fresh listening filed as ${result.namespace}`);
+        selectRecord(record.akousma_id);
+      } catch (error) {
+        toast(error.message);
+        againButton.disabled = false;
+        againButton.textContent = "listen again";
+      }
+    });
+    againRow.append(presetInput, datalist, againButton);
+    pane.append(againRow);
+  }
+
+  // constellations this memory can join
+  const conRow = el("div", "section row");
+  conRow.append(el("span", "note", "constellation"));
+  const conSelect = el("select");
+  const conAdd = el("button", "btn", "add to");
+  conAdd.disabled = true;
+  api("/api/constellations").then((data) => {
+    for (const item of data.constellations) {
+      const member = (item.akousma_ids || []).includes(record.akousma_id);
+      conSelect.append(new Option(`${item.name}${member ? " ✓" : ""} (${(item.akousma_ids || []).length})`, item.id));
+    }
+    if (!data.constellations.length) conSelect.append(new Option("none yet — create one in Constellations", ""));
+    else conAdd.disabled = false;
+  }).catch(() => {});
+  conAdd.addEventListener("click", async () => {
+    if (!conSelect.value) return;
+    await api(`/api/constellations/${conSelect.value}/records`, {
+      method: "POST",
+      body: JSON.stringify({ akousma_id: record.akousma_id }),
+    });
+    toast("added to the constellation");
+    selectRecord(record.akousma_id);
+  });
+  conRow.append(conSelect, conAdd);
+  pane.append(conRow);
 }
 
 for (const id of ["f-text", "f-app", "f-origin"]) {
@@ -326,6 +445,289 @@ $("m-save").addEventListener("click", async () => {
   } catch (error) {
     $("m-status").textContent = error.message;
   }
+});
+
+/* ── constellations ───────────────────────────────────────────────────── */
+
+const walk = { audio: null, queue: [], index: 0, button: null };
+
+function stopWalk() {
+  if (walk.audio) { walk.audio.pause(); walk.audio = null; }
+  walk.queue = [];
+  if (walk.button) walk.button.textContent = "play the walk";
+}
+
+function playWalk(members, button) {
+  stopWalk();
+  walk.queue = members.filter((m) => m.playable);
+  walk.index = 0;
+  walk.button = button;
+  if (!walk.queue.length) { toast("no playable memories in this constellation"); return; }
+  button.textContent = "stop the walk";
+  const step = () => {
+    if (walk.index >= walk.queue.length) { stopWalk(); return; }
+    const member = walk.queue[walk.index];
+    toast(`walk ${walk.index + 1}/${walk.queue.length}: ${member.summary?.slice(0, 50) || member.akousma_id}`);
+    walk.audio = new Audio(appPath(`/api/audio/${member.akousma_id}`));
+    walk.audio.onended = () => { walk.index += 1; step(); };
+    walk.audio.onerror = () => { walk.index += 1; step(); };
+    walk.audio.play().catch(() => { walk.index += 1; step(); });
+  };
+  step();
+}
+
+async function loadConstellations(selectId) {
+  const data = await api("/api/constellations");
+  const list = $("con-list");
+  list.replaceChildren();
+  if (!data.constellations.length) {
+    list.append(el("div", "empty", "no constellations yet — name one above, then add memories from the library"));
+  }
+  for (const item of data.constellations) {
+    const card = el("div", "rec" + (item.id === selectId ? " active" : ""));
+    const line1 = el("div", "line1");
+    line1.append(el("span", "summ", item.name));
+    line1.append(el("span", "when", `${(item.akousma_ids || []).length} memories`));
+    card.append(line1);
+    if (item.note) card.append(el("div", "line2", item.note.slice(0, 90)));
+    card.addEventListener("click", () => openConstellation(item.id));
+    list.append(card);
+  }
+  if (selectId) openConstellation(selectId);
+}
+
+async function openConstellation(id) {
+  stopWalk();
+  const data = await api(`/api/constellations/${id}`);
+  const con = data.constellation;
+  const pane = $("con-detail");
+  pane.replaceChildren();
+  pane.append(el("h3", "", con.name));
+  if (con.note) pane.append(el("p", "note", con.note));
+  pane.append(el("div", "mono note", `${con.id} · ${con.playable_count}/${con.members.length} playable`));
+
+  const actions = el("div", "row");
+  actions.style.margin = "10px 0";
+  const play = el("button", "btn primary", "play the walk");
+  play.addEventListener("click", () => {
+    if (walk.audio) stopWalk();
+    else playWalk(con.members, play);
+  });
+  actions.append(play);
+  const exportButton = el("button", "btn", "export pack");
+  exportButton.addEventListener("click", async () => {
+    try {
+      const result = await api("/api/export", {
+        method: "POST",
+        body: JSON.stringify({ name: con.name, constellation_id: con.id }),
+      });
+      toast(`pack built: ${result.included} shipped, ${result.excluded.length} blocked by consent`);
+    } catch (error) { toast(error.message); }
+  });
+  actions.append(exportButton);
+  const remove = el("button", "btn danger", "delete");
+  remove.addEventListener("click", async () => {
+    if (!confirm("Delete this constellation? The memories themselves stay in the library.")) return;
+    await api(`/api/constellations/${con.id}`, { method: "DELETE" });
+    $("con-detail").replaceChildren(el("div", "empty", "deleted"));
+    loadConstellations();
+  });
+  actions.append(remove);
+  pane.append(actions);
+
+  const section = el("div", "section linklist");
+  section.append(el("h2", "", "members, in order"));
+  con.members.forEach((member, index) => {
+    const row = el("div", "sim-row");
+    row.append(el("span", "note mono", String(index + 1).padStart(2, "0")));
+    if (member.missing) row.append(el("span", "link missing", `${member.akousma_id} (forgotten memory)`));
+    else {
+      const anchor = el("span", "link", member.summary);
+      anchor.addEventListener("click", () => {
+        document.querySelector('[data-tab="library"]').click();
+        selectRecord(member.akousma_id);
+      });
+      row.append(anchor);
+      if (member.playable) {
+        const listen = el("button", "btn", "▸");
+        listen.addEventListener("click", () => {
+          stopWalk();
+          walk.audio = new Audio(appPath(`/api/audio/${member.akousma_id}`));
+          walk.audio.play();
+        });
+        row.append(listen);
+      }
+    }
+    const drop = el("button", "btn danger", "×");
+    drop.addEventListener("click", async () => {
+      await api(`/api/constellations/${con.id}/records/${member.akousma_id}`, { method: "DELETE" });
+      openConstellation(con.id);
+      loadConstellations(con.id);
+    });
+    row.append(drop);
+    section.append(row);
+  });
+  if (!con.members.length) section.append(el("div", "note", "empty — open a memory in the library and use “add to”"));
+  pane.append(section);
+}
+
+$("c-create").addEventListener("click", async () => {
+  const name = $("c-name").value.trim();
+  if (!name) { $("c-status").textContent = "a constellation needs a name"; return; }
+  try {
+    const data = await api("/api/constellations", {
+      method: "POST",
+      body: JSON.stringify({ name, note: $("c-note").value.trim() }),
+    });
+    $("c-name").value = ""; $("c-note").value = ""; $("c-status").textContent = "";
+    toast("constellation created");
+    loadConstellations(data.constellation.id);
+  } catch (error) { $("c-status").textContent = error.message; }
+});
+
+/* ── timeline ─────────────────────────────────────────────────────────── */
+
+async function loadTimeline() {
+  const data = await api(`/api/timeline?bucket=${$("tl-bucket").value}`);
+  $("tl-status").textContent = `${data.total} memories across ${data.buckets.length} ${$("tl-bucket").value}s`;
+  const rhythms = data.recurrence_rhythms || {};
+  $("tl-rhythms").textContent = rhythms.peak_weekday
+    ? `recurrence rhythm: most entries on ${rhythms.peak_weekday}s, peak UTC hour ${rhythms.peak_hour_utc}:00 · ${rhythms.note}`
+    : "recurrence rhythms appear as the library grows";
+  const wrap = $("timeline");
+  wrap.replaceChildren();
+  if (!data.buckets.length) { wrap.append(el("div", "empty", "no memories yet — the timeline starts when the library does")); return; }
+  const max = Math.max(...data.buckets.map((b) => b.count));
+  for (const bucket of data.buckets) {
+    const row = el("div", "tl-row");
+    row.append(el("span", "tl-label mono", bucket.bucket));
+    const bar = el("span", "tl-bar");
+    for (const [app, count] of Object.entries(bucket.by_app)) {
+      const seg = el("span", "tl-seg");
+      seg.style.width = `${Math.max(2, (count / max) * 420)}px`;
+      seg.style.background = APP_COLORS[app] || APP_COLORS.unknown;
+      seg.title = `${app}: ${count}`;
+      bar.append(seg);
+    }
+    row.append(bar);
+    row.append(el("span", "note", String(bucket.count)));
+    if (bucket.top_tags.length) row.append(el("span", "note", bucket.top_tags.map((t) => `#${t}`).join(" ")));
+    wrap.append(row);
+  }
+}
+
+$("tl-bucket").addEventListener("change", loadTimeline);
+
+/* ── diary ────────────────────────────────────────────────────────────── */
+
+async function loadDiary() {
+  if (!$("d-day").value) $("d-day").value = new Date().toISOString().slice(0, 10);
+  openDiaryDay($("d-day").value);
+  try {
+    const data = await api("/api/wiki");
+    const wrap = $("d-days");
+    wrap.replaceChildren();
+    for (const day of (data.pages.diary || []).slice(0, 10)) {
+      const chip = el("span", "tagchip", day);
+      chip.addEventListener("click", () => { $("d-day").value = day; openDiaryDay(day); });
+      wrap.append(chip);
+    }
+  } catch {}
+}
+
+async function openDiaryDay(day) {
+  try {
+    const data = await api(`/api/diary/${day}`);
+    $("d-digest").innerHTML = renderMarkdown(data.markdown);
+  } catch (error) {
+    $("d-digest").innerHTML = `<p class="note">${error.message}</p>`;
+  }
+}
+
+$("d-load").addEventListener("click", () => openDiaryDay($("d-day").value));
+$("d-save").addEventListener("click", async () => {
+  const text = $("d-text").value.trim();
+  if (!text) { $("d-status").textContent = "the diary needs at least a line"; return; }
+  try {
+    const data = await api("/api/diary", {
+      method: "POST",
+      body: JSON.stringify({
+        text,
+        tags: $("d-tags").value.split(",").map((t) => t.trim()).filter(Boolean),
+        place: $("d-place").value.trim() || null,
+      }),
+    });
+    $("d-text").value = ""; $("d-status").textContent = "";
+    toast("written into the diary");
+    $("d-day").value = data.day;
+    openDiaryDay(data.day);
+  } catch (error) { $("d-status").textContent = error.message; }
+});
+
+/* ── consent audit + export packs ─────────────────────────────────────── */
+
+async function loadAudit() {
+  const data = await api("/api/audit/consent");
+  const totals = Object.entries(data.totals).map(([status, count]) => `${status.replaceAll("_", " ")} ${count}`).join(" · ");
+  $("a-totals").textContent = `${data.total} memories · ${data.exportable} exportable · ${totals}`;
+  const wrap = $("audit-list");
+  wrap.replaceChildren();
+  const items = $("a-blocked").checked ? data.items.filter((item) => !item.exportable) : data.items;
+  if (!items.length) { wrap.append(el("div", "empty", "nothing here — every memory clears the current filter")); return; }
+  for (const item of items) {
+    const row = el("div", "audit-row");
+    const anchor = el("span", "link", item.summary);
+    anchor.addEventListener("click", () => {
+      document.querySelector('[data-tab="library"]').click();
+      selectRecord(item.akousma_id);
+    });
+    row.append(el("span", `badge app-${item.originating_app || "unknown"}`, item.originating_app || "?"), anchor);
+    row.append(el("span", item.exportable ? "badge ok" : "badge blocked", item.exportable ? "exportable" : "blocked"));
+    const select = el("select");
+    for (const value of ["unknown", "owned", "licensed", "public_domain", "restricted"]) select.append(new Option(value.replaceAll("_", " "), value));
+    select.value = item.consent_status || "unknown";
+    select.addEventListener("change", async () => {
+      await api(`/api/records/${item.akousma_id}/consent`, {
+        method: "POST",
+        body: JSON.stringify({ consent_status: select.value }),
+      });
+      toast(`consent: ${select.value}`);
+      loadAudit();
+    });
+    row.append(select);
+    if (item.rights_note) row.append(el("span", "note", item.rights_note.slice(0, 60)));
+    wrap.append(row);
+  }
+}
+
+$("a-refresh").addEventListener("click", loadAudit);
+$("a-blocked").addEventListener("change", loadAudit);
+
+async function loadPacks() {
+  const data = await api("/api/exports");
+  const wrap = $("pack-list");
+  wrap.replaceChildren();
+  for (const pack of data.packs) {
+    const row = el("div", "sim-row");
+    row.append(el("span", "", pack.name || "pack"));
+    row.append(el("span", "note", `${pack.created_at || ""} · ${pack.included} shipped · ${pack.excluded} blocked`));
+    row.append(el("span", "note mono", pack.path));
+    wrap.append(row);
+  }
+}
+
+$("x-build").addEventListener("click", async () => {
+  const name = $("x-name").value.trim();
+  const tag = $("x-tag").value.trim();
+  if (!name || !tag) { $("x-status").textContent = "name the pack and pick a tag"; return; }
+  try {
+    const result = await api("/api/export", {
+      method: "POST",
+      body: JSON.stringify({ name, tag, include_audio: $("x-audio").checked, include_wiki: $("x-wiki").checked }),
+    });
+    $("x-status").textContent = `${result.included} shipped, ${result.excluded.length} blocked → ${result.path}`;
+    loadPacks();
+  } catch (error) { $("x-status").textContent = error.message; }
 });
 
 /* ── graph (tiny force layout on canvas) ──────────────────────────────── */
@@ -533,7 +935,7 @@ $("r-start").addEventListener("click", async () => {
   const log = $("r-log");
   log.replaceChildren();
   $("r-result").replaceChildren();
-  const source = new EventSource(`/api/research/${data.session_id}/events`);
+  const source = new EventSource(appPath(`/api/research/${data.session_id}/events`));
   source.onmessage = async (message) => {
     const event = JSON.parse(message.data);
     if (event.kind === "end") {
@@ -563,9 +965,19 @@ async function loadSettings() {
   $("s-model").value = data.llm.model || "";
   $("s-key").value = data.llm.api_key || "";
   $("s-command").value = data.llm.command || "";
+  const watcher = data.watcher || {};
+  $("s-watch").value = String(watcher.enabled !== false);
+  $("s-ingest").value = watcher.ingest_seconds ?? 60;
+  $("s-lintm").value = watcher.lint_minutes ?? 30;
   $("r-mode-note").textContent = data.llm.configured
     ? `research runs with ${data.llm.provider}`
     : "no LLM configured — research runs as a deterministic traversal (configure one in Settings to deepen it)";
+  try {
+    const status = await api("/api/watcher");
+    $("s-watch-status").textContent = status.enabled
+      ? `running since ${status.started_at || "?"} · ${status.ingested_count} auto-ingested · last lint ${status.last_lint_at || "not yet"} (${status.last_lint_issues ?? "—"} issues)${status.last_error ? ` · last error: ${status.last_error}` : ""}`
+      : "not running — interval changes apply on next launch";
+  } catch {}
 }
 
 $("s-save").addEventListener("click", async () => {
@@ -579,6 +991,11 @@ $("s-save").addEventListener("click", async () => {
       api_key: $("s-key").value.trim(),
       command: $("s-command").value.trim(),
     },
+    watcher: {
+      enabled: $("s-watch").value === "true",
+      ingest_seconds: Number($("s-ingest").value) || 60,
+      lint_minutes: Number($("s-lintm").value) || 30,
+    },
   };
   const data = await api("/api/settings", { method: "PUT", body: JSON.stringify(body) });
   state.settings = data;
@@ -589,7 +1006,7 @@ $("s-save").addEventListener("click", async () => {
 /* ── realtime ─────────────────────────────────────────────────────────── */
 
 function watchChanges() {
-  const source = new EventSource("/api/events");
+  const source = new EventSource(appPath("/api/events"));
   source.onopen = () => { $("live-dot").classList.add("on"); $("live-label").textContent = "live"; };
   source.onerror = () => { $("live-dot").classList.remove("on"); $("live-label").textContent = "watching"; };
   source.onmessage = (message) => {
