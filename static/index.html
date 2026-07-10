@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>akousmata — listening navigator</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <h1>akousmata</h1>
+      <span class="sub">listening navigator — sonic memories, not audio files</span>
+      <span class="spacer"></span>
+      <span><span class="live-dot" id="live-dot"></span><span class="note" id="live-label">watching</span></span>
+      <span class="store-path" id="store-path"></span>
+    </header>
+
+    <nav class="tabs" id="tabs">
+      <button data-tab="library" class="active">Library</button>
+      <button data-tab="graph">Graph</button>
+      <button data-tab="wiki">Wiki</button>
+      <button data-tab="research">Research</button>
+      <button data-tab="settings">Settings</button>
+    </nav>
+
+    <main id="tab-library">
+      <div class="filters" id="filters">
+        <input type="search" id="f-text" placeholder="search memories…" />
+        <select id="f-app">
+          <option value="">every app</option>
+          <option value="oida">oída</option>
+          <option value="germ">germ</option>
+          <option value="algophony">algophony</option>
+          <option value="akousmata">manual</option>
+        </select>
+        <select id="f-origin">
+          <option value="">every origin</option>
+          <option value="live-input">live input</option>
+          <option value="system-output">system output</option>
+          <option value="file">file</option>
+          <option value="generated">generated</option>
+          <option value="unknown">unknown</option>
+        </select>
+        <span id="tag-chips"></span>
+        <span class="spacer" style="flex:1"></span>
+        <button class="btn primary" id="btn-add">Add memory</button>
+      </div>
+      <div class="library">
+        <div class="list-pane"><div id="rec-list"></div></div>
+        <div class="detail-pane"><div id="rec-detail" class="detail"><div class="empty">select a memory</div></div></div>
+      </div>
+      <div class="section" id="add-form" hidden>
+        <h2>Add a manual memory — what you listened</h2>
+        <div class="form-grid">
+          <label>summary</label><input type="text" id="m-summary" placeholder="one line of what you heard" />
+          <label>notes</label><textarea id="m-notes" placeholder="longer notes: how it sounded, what it did to you…"></textarea>
+          <label>tags</label><input type="text" id="m-tags" placeholder="comma, separated, tags" />
+          <label>place</label><input type="text" id="m-place" placeholder="where (optional)" />
+          <label>heard at</label><input type="text" id="m-heard" placeholder="when (optional, free text or ISO)" />
+          <label>kind</label>
+          <select id="m-kind">
+            <option value="heard_live">heard live (no file)</option>
+            <option value="file">from a file on this computer</option>
+          </select>
+          <label>audio path</label><input type="text" id="m-audio" placeholder="/path/to/file.wav (optional; copied into the store)" />
+          <label></label>
+          <div class="row">
+            <button class="btn primary" id="m-save">Remember</button>
+            <button class="btn" id="m-cancel">Cancel</button>
+            <span class="note" id="m-status"></span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <main id="tab-graph" hidden>
+      <div class="graph-legend">
+        <span><span class="legend-swatch"></span>lineage (made from)</span>
+        <span><span class="legend-swatch dashed"></span>kinship (belongs with)</span>
+        <span class="spacer" style="flex:1"></span>
+        <button class="btn" id="graph-all">whole library</button>
+        <span class="note" id="graph-status"></span>
+      </div>
+      <div id="graph-wrap"><canvas id="graph"></canvas></div>
+    </main>
+
+    <main id="tab-wiki" hidden>
+      <div class="row" style="padding: 10px 0">
+        <button class="btn" id="wiki-rebuild">Rebuild pages</button>
+        <button class="btn" id="wiki-lint">Lint</button>
+        <span class="note" id="wiki-status"></span>
+      </div>
+      <div class="wiki">
+        <div class="wiki-nav" id="wiki-nav"></div>
+        <div class="wiki-body" id="wiki-body"><div class="empty">the wiki layer — pages the navigator maintains over your memories</div></div>
+      </div>
+    </main>
+
+    <main id="tab-research" hidden>
+      <div class="section">
+        <h2>Ask the library</h2>
+        <div class="row">
+          <input type="text" id="r-question" style="flex:1; min-width: 280px" placeholder="what recurs at the harbor? which memories fed this sound? …" />
+          <select id="r-steps"><option value="2">2 steps</option><option value="4" selected>4 steps</option><option value="6">6 steps</option></select>
+          <button class="btn primary" id="r-start">Research</button>
+        </div>
+        <p class="note" id="r-mode-note"></p>
+      </div>
+      <div class="section">
+        <h2>Session</h2>
+        <div class="research-log" id="r-log"><div class="empty">no session running</div></div>
+      </div>
+      <div class="section">
+        <h2>Result</h2>
+        <div class="wiki-body" id="r-result"></div>
+      </div>
+    </main>
+
+    <main id="tab-settings" hidden>
+      <div class="section">
+        <h2>Connections</h2>
+        <div class="form-grid">
+          <label>germ url</label><input type="text" id="s-germ" />
+          <label>oída url</label><input type="text" id="s-oida" />
+        </div>
+      </div>
+      <div class="section">
+        <h2>LLM (bring your own key — optional; the library works without it)</h2>
+        <div class="form-grid">
+          <label>provider</label>
+          <select id="s-provider">
+            <option value="none">none (deterministic only)</option>
+            <option value="openai_compatible">openai-compatible (openai, grok/xai, openrouter, ollama…)</option>
+            <option value="anthropic">anthropic</option>
+            <option value="cli">local cli agent (codex, opencode…)</option>
+          </select>
+          <label>base url</label><input type="text" id="s-baseurl" placeholder="https://api.x.ai — empty for provider default" />
+          <label>model</label><input type="text" id="s-model" placeholder="model id" />
+          <label>api key</label><input type="text" id="s-key" placeholder="stored only in your local settings.json" />
+          <label>cli command</label><input type="text" id="s-command" placeholder="e.g. codex exec -" />
+          <label></label>
+          <div class="row"><button class="btn primary" id="s-save">Save</button><span class="note" id="s-status"></span></div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,286 @@
+"""The wiki layer — an LLM-wiki pattern forked into sonic memories.
+
+Three layers, after Karpathy's llm-wiki gist:
+
+- **Raw layer**: the akousma records and audio objects. Producers own them;
+  the wiki reads but never rewrites another producer's listening.
+- **Wiki layer** (`<store>/wiki/`): markdown pages the navigator owns —
+  one page per record, one per tag, topic syntheses from research sessions,
+  plus `index.md` (catalog with one-line summaries) and `log.md`
+  (append-only operations journal). Pages regenerate deterministically from
+  the store; LLM expansions are additive sections, clearly marked.
+- **Schema layer**: `AGENTS.md` in this repository — conventions that turn
+  any attached agent into a disciplined wiki maintainer.
+
+Operations: **ingest** (a record arrives → its page, tag pages, and index
+update; a log line is appended), **query** (research sessions file their
+answers back as topic pages), **lint** (store integrity via `verify()` plus
+wiki drift: orphan pages, missing pages, dangling wikilinks).
+"""
+from __future__ import annotations
+
+import json
+import re
+import time
+from pathlib import Path
+from typing import Any
+
+from akousmata_app.paths import wiki_root
+from akousmata_app.records import summary_line
+
+_SLUG_RE = re.compile(r"[^a-z0-9]+")
+
+
+def slugify(value: str) -> str:
+    slug = _SLUG_RE.sub("-", str(value).lower()).strip("-")
+    return slug or "untitled"
+
+
+def _now() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def _dirs() -> dict[str, Path]:
+    root = wiki_root()
+    dirs = {
+        "root": root,
+        "records": root / "records",
+        "tags": root / "tags",
+        "topics": root / "topics",
+        "research": root / "research",
+    }
+    for path in dirs.values():
+        path.mkdir(parents=True, exist_ok=True)
+    return dirs
+
+
+def log_append(operation: str, subject: str, note: str = "") -> None:
+    root = _dirs()["root"]
+    line = f"## [{_now()}] {operation} | {subject}"
+    if note:
+        line += f" — {note}"
+    with open(root / "log.md", "a", encoding="utf-8") as handle:
+        handle.write(line + "\n")
+
+
+# ── page builders (deterministic, grounded in the store) ────────────────────
+
+def record_page(store, record: dict[str, Any]) -> str:
+    rid = record["akousma_id"]
+    provenance = record.get("provenance") or {}
+    audio = record.get("audio") or {}
+    lineage = record.get("lineage") or {}
+    lines = [
+        f"# {summary_line(record)}",
+        "",
+        f"- id: `{rid}`",
+        f"- created: {record.get('created_at', '?')}",
+        f"- app: {provenance.get('originating_app', 'unknown')} · origin: {provenance.get('origin', '?')} · source: {provenance.get('source_type', '?')}",
+    ]
+    if audio.get("duration_seconds"):
+        lines.append(f"- duration: {audio['duration_seconds']} s")
+    if provenance.get("consent_status"):
+        lines.append(f"- consent: {provenance['consent_status']}")
+    if provenance.get("pipeline_effects"):
+        lines.append(f"- pipeline: {', '.join(provenance['pipeline_effects'])}")
+    tags = record.get("tags") or []
+    if tags:
+        lines.append("- tags: " + ", ".join(f"[[tag:{slugify(t)}|{t}]]" for t in tags))
+    lines.append("")
+
+    listening = record.get("listening") or {}
+    if listening:
+        lines.append("## Listenings")
+        for namespace in sorted(listening):
+            entry = listening[namespace]
+            if not isinstance(entry, dict):
+                continue
+            payload = entry.get("payload") if isinstance(entry.get("payload"), dict) else entry
+            contract = entry.get("contract")
+            heading = f"### {namespace}" + (f" · `{contract}`" if contract else "")
+            lines.append(heading)
+            text = entry.get("summary") if isinstance(entry.get("summary"), str) else None
+            if not text and isinstance(payload, dict):
+                for key in ("caption", "summary", "main_reading", "notes", "brief"):
+                    value = payload.get(key)
+                    if isinstance(value, str) and value.strip():
+                        text = value.strip()
+                        break
+            lines.append(text or "_structured payload without a prose summary_")
+            lines.append("")
+
+    parents = lineage.get("parent_akousma_ids") or []
+    relations = lineage.get("relations") or []
+    children = store.children(rid)
+    if parents or children or relations:
+        lines.append("## Lineage and kinship")
+        for parent in parents:
+            lines.append(f"- made from [[record:{parent}]]")
+        for child in children:
+            lines.append(f"- became [[record:{child}]]")
+        for rel in relations:
+            note = f" — {rel['note']}" if rel.get("note") else ""
+            lines.append(f"- {rel.get('type', 'other').replace('_', ' ')} [[record:{rel.get('target_akousma_id', '?')}]]{note}")
+        lines.append("")
+
+    evaluation = (record.get("extensions") or {}).get("algophony.eval")
+    if evaluation:
+        lines.append("## Evaluation")
+        lines.append("```json")
+        lines.append(json.dumps(evaluation, indent=2, ensure_ascii=False))
+        lines.append("```")
+        lines.append("")
+
+    annotations = record.get("annotations") or {}
+    if annotations:
+        lines.append("## Annotations")
+        for key, value in annotations.items():
+            lines.append(f"- **{key}**: {value}")
+        lines.append("")
+
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def tag_page(store, tag: str) -> str:
+    records = store.query(tag=tag, limit=500)
+    lines = [f"# tag: {tag}", "", f"{len(records)} memories carry this tag.", ""]
+    for record in records:
+        lines.append(f"- [[record:{record['akousma_id']}|{summary_line(record)[:90]}]] ({record.get('created_at', '?')[:10]})")
+    return "\n".join(lines) + "\n"
+
+
+def build_index(store) -> str:
+    dirs = _dirs()
+    rows = store.conn.execute("SELECT record FROM akousmata ORDER BY created_at DESC").fetchall()
+    records = [json.loads(r["record"]) for r in rows]
+    tags = store.tags() if hasattr(store, "tags") else []
+    topics = sorted(p.stem for p in dirs["topics"].glob("*.md"))
+    lines = [
+        "# akousmata — index",
+        "",
+        f"_{len(records)} memories · {len(tags)} tags · {len(topics)} topics · rebuilt {_now()}_",
+        "",
+        "## Topics",
+    ]
+    lines += [f"- [[topic:{slug}]]" for slug in topics] or ["- _none yet — research sessions file their answers here_"]
+    lines += ["", "## Tags"]
+    lines += [f"- [[tag:{slugify(t['tag'])}|{t['tag']}]] ({t['count']})" for t in tags] or ["- _none yet_"]
+    lines += ["", "## Memories"]
+    for record in records:
+        lines.append(f"- [[record:{record['akousma_id']}|{summary_line(record)[:90]}]] — {record.get('created_at', '?')[:10]}")
+    return "\n".join(lines) + "\n"
+
+
+# ── operations ───────────────────────────────────────────────────────────────
+
+def ingest(store, akousma_id: str) -> dict[str, Any]:
+    """One record arrives (or changes): refresh its page, its tag pages, and
+    the index; log the pass. A single ingest may touch many pages."""
+    record = store.get(akousma_id)
+    if record is None:
+        raise KeyError(f"akousma not found: {akousma_id}")
+    dirs = _dirs()
+    touched = []
+    page = dirs["records"] / f"{akousma_id}.md"
+    page.write_text(record_page(store, record), encoding="utf-8")
+    touched.append(str(page.relative_to(dirs["root"])))
+    for tag in record.get("tags") or []:
+        path = dirs["tags"] / f"{slugify(tag)}.md"
+        path.write_text(tag_page(store, tag), encoding="utf-8")
+        touched.append(str(path.relative_to(dirs["root"])))
+    (dirs["root"] / "index.md").write_text(build_index(store), encoding="utf-8")
+    touched.append("index.md")
+    log_append("ingest", akousma_id, f"{len(touched)} pages touched")
+    return {"akousma_id": akousma_id, "touched": touched}
+
+
+def rebuild(store) -> dict[str, Any]:
+    """Full deterministic regeneration of record pages, tag pages, and index.
+    Topic pages (research output) are preserved — they are synthesis, not
+    derivation."""
+    dirs = _dirs()
+    rows = store.conn.execute("SELECT record FROM akousmata").fetchall()
+    records = [json.loads(r["record"]) for r in rows]
+    known_ids = set()
+    for record in records:
+        known_ids.add(record["akousma_id"])
+        (dirs["records"] / f"{record['akousma_id']}.md").write_text(record_page(store, record), encoding="utf-8")
+    tags = store.tags() if hasattr(store, "tags") else []
+    known_tags = set()
+    for item in tags:
+        slug = slugify(item["tag"])
+        known_tags.add(slug)
+        (dirs["tags"] / f"{slug}.md").write_text(tag_page(store, item["tag"]), encoding="utf-8")
+    orphans = []
+    for page in dirs["records"].glob("*.md"):
+        if page.stem not in known_ids:
+            orphans.append(f"records/{page.name}")
+    for page in dirs["tags"].glob("*.md"):
+        if page.stem not in known_tags:
+            orphans.append(f"tags/{page.name}")
+    (dirs["root"] / "index.md").write_text(build_index(store), encoding="utf-8")
+    log_append("rebuild", "full wiki", f"{len(records)} records, {len(tags)} tags, {len(orphans)} orphan pages kept")
+    return {"records": len(records), "tags": len(tags), "orphan_pages": orphans}
+
+
+_WIKILINK_RE = re.compile(r"\[\[(record|tag|topic):([^\]|]+)(?:\|[^\]]*)?\]\]")
+
+
+def lint(store) -> dict[str, Any]:
+    """Drift prevention — the pattern only works if this runs. Store
+    integrity (dangling parents/relations, missing audio, invalid records)
+    plus wiki drift (missing/orphan pages, dangling wikilinks)."""
+    dirs = _dirs()
+    report: dict[str, Any] = {"store": store.verify() if hasattr(store, "verify") else {}}
+    rows = store.conn.execute("SELECT akousma_id FROM akousmata").fetchall()
+    ids = {r["akousma_id"] for r in rows}
+    record_pages = {p.stem for p in dirs["records"].glob("*.md")}
+    report["missing_record_pages"] = sorted(ids - record_pages)
+    report["orphan_record_pages"] = sorted(record_pages - ids)
+    tag_slugs = {slugify(t["tag"]) for t in (store.tags() if hasattr(store, "tags") else [])}
+    tag_pages = {p.stem for p in dirs["tags"].glob("*.md")}
+    report["orphan_tag_pages"] = sorted(tag_pages - tag_slugs)
+    topic_slugs = {p.stem for p in dirs["topics"].glob("*.md")}
+    dangling: list[str] = []
+    for page in list(dirs["records"].glob("*.md")) + list(dirs["tags"].glob("*.md")) + list(dirs["topics"].glob("*.md")):
+        text = page.read_text(encoding="utf-8")
+        for kind, target in _WIKILINK_RE.findall(text):
+            target = target.strip()
+            missing = (
+                (kind == "record" and target not in ids)
+                or (kind == "tag" and target not in tag_slugs)
+                or (kind == "topic" and target not in topic_slugs)
+            )
+            if missing:
+                dangling.append(f"{page.relative_to(dirs['root'])} -> [[{kind}:{target}]]")
+    report["dangling_wikilinks"] = dangling
+    log_append("lint", "wiki + store", f"{len(dangling)} dangling links")
+    return report
+
+
+def read_page(kind: str, name: str) -> str | None:
+    dirs = _dirs()
+    folder = {"record": dirs["records"], "tag": dirs["tags"], "topic": dirs["topics"], "research": dirs["research"]}.get(kind)
+    if folder is None:
+        return None
+    path = folder / f"{name}.md"
+    return path.read_text(encoding="utf-8") if path.exists() else None
+
+
+def write_topic(slug: str, markdown: str) -> str:
+    dirs = _dirs()
+    path = dirs["topics"] / f"{slugify(slug)}.md"
+    path.write_text(markdown, encoding="utf-8")
+    log_append("topic", slugify(slug))
+    return str(path)
+
+
+def list_pages() -> dict[str, list[str]]:
+    dirs = _dirs()
+    return {
+        "records": sorted(p.stem for p in dirs["records"].glob("*.md")),
+        "tags": sorted(p.stem for p in dirs["tags"].glob("*.md")),
+        "topics": sorted(p.stem for p in dirs["topics"].glob("*.md")),
+        "research": sorted(p.stem for p in dirs["research"].glob("*.md")),
+        "has_index": (dirs["root"] / "index.md").exists(),
+    }

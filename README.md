@@ -1,0 +1,77 @@
+# akousmata — the listening navigator
+
+**akousma** (ἄκουσμα, "a thing heard"; plural **akousmata**) — one sound's
+memory. **Earworm is the protocol, the akousma is the shared record, the
+akousmata is the whole library**: a network of listened things and their
+relations. This app is how you walk it — navigating sonic memories, not audio
+files.
+
+The akousmata stores what agents listen (oída's ears, algophony's
+evaluations, germ's cultivations) **and what you listen**: manual
+human listening events live in the same library, with the listener declared.
+Every memory carries provenance, structured listenings, causal lineage
+("made from") and typed kinship ("belongs with"): variants, recurrences,
+series, responses.
+
+## What it is
+
+A local-first library app over the shared akousmata store. It loads **no
+models and runs no agents** — it is the quiet room of the Listening Stack:
+
+- **Library** — filter by app, origin, tag, text, time; play resolvable
+  audio; edit tags, notes, and summaries; add manual memories (heard live or
+  from a file, which is content-addressed into the store); forget (removal
+  that leaves honest absence).
+- **Graph** — the memory system as a navigable graph: solid edges are
+  lineage, dashed edges are kinship, colors are originating apps.
+- **Wiki** — an LLM-wiki (after Karpathy's llm-wiki pattern) forked into
+  sonic memories: a maintained markdown layer over the records with one page
+  per memory, per tag, plus topic syntheses; `index.md` catalog, `log.md`
+  journal, and a lint pass for drift (dangling links, orphan pages, store
+  integrity). Deterministic by default; see `docs/concept.md`.
+- **Research** — ask the library a question. Without an LLM it produces a
+  deterministic traversal report (the graph already answers recurrence and
+  kinship questions); with a BYOK provider it runs a bounded research loop
+  and files the answer back as a topic page, so answers compound.
+- **BYOK LLM** — optional: any OpenAI-compatible endpoint (OpenAI, xAI/Grok,
+  OpenRouter, Ollama, llama.cpp), Anthropic, or a **local CLI agent**
+  (codex, opencode — the prompt goes to stdin, nothing leaves your machine).
+  Keys live in your local `settings.json`, never in the repo.
+- **Germ handoff** — send any memory into germ as sound, prompt, or lineage
+  (the same three buttons oída uses), turning listened things into sounding
+  things.
+- **Realtime** — the navigator watches the store; memories written by oída
+  or germ appear as they happen.
+
+## The store
+
+By default the store data lives **beside this code** and is **never
+tracked**: `index.sqlite`, `objects/` (content-addressed audio), `wiki/`
+(the maintained layer), `settings.json`. Point `AKOUSMATA_PATH` elsewhere to
+separate code and data. The store API is
+[`earworm/packages/py-akousma`](https://github.com/sonicfieldlabs/earworm)
+(spec: `earworm/docs/akousma_spec_v1.md`) — this app is a navigator over
+that protocol, not a fork of it.
+
+## Run
+
+```sh
+pip install -e .                                  # fastapi + uvicorn
+pip install -e <SFL>/earworm/packages/py-akousma  # the store library
+akousmata                                         # http://127.0.0.1:5180
+```
+
+In a Sonic Field monorepo layout the sibling `earworm/` checkout is picked
+up automatically. Tests: `python3 -m pytest tests/ -q`.
+
+## The stack around it
+
+- **oída** listens and remembers (and embeds this library view as its
+  history); **germ** cultivates remembered sounds into new ones; **algophony**
+  evaluates batches and stamps results back onto records; **AKOÚŌ** defines
+  how everything listens. The akousmata is where all of it — and you —
+  keep one shared memory.
+
+## License
+
+MIT. The store data is yours and never part of the repository.

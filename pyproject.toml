@@ -1,0 +1,29 @@
+[project]
+name = "akousmata"
+version = "0.1.0"
+description = "The listening navigator: a local-first library app over the shared akousmata store of sonic memories."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "httpx>=0.27",
+    "jsonschema>=4.21",
+]
+
+[project.scripts]
+akousmata = "akousmata_app.server:main"
+
+[tool.setuptools]
+packages = ["akousmata_app"]
+
+# The `akousma` store library is the Python reference implementation from the
+# earworm repository (earworm/packages/py-akousma). It is not on PyPI:
+#   pip install -e <SFL>/earworm/packages/py-akousma
+# In a Sonic Field monorepo layout the sibling path is picked up automatically.
