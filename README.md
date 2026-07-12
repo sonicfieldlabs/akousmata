@@ -24,6 +24,12 @@ models and runs no agents** — it is the quiet room of the Listening Stack:
   that leaves honest absence).
 - **Graph** — the memory system as a navigable graph: solid edges are
   lineage, dashed edges are kinship, colors are originating apps.
+- **Map** — the listening map: where listenings happened, not where sounds
+  live. A hand-rolled Web-Mercator canvas (embedded Natural Earth coastlines,
+  no map library) with clustering and click-through to the library; an OSM
+  street-tile layer exists behind an explicit opt-in and is the only remote
+  call the UI can make. Locations are consent-scoped (spec v1.2), editable
+  from each record's "place" section, and always stripped from export packs.
 - **Constellations** — saved, ordered graph selections that remain playable
   as soundwalks; forgotten members stay visible as meaningful absences.
 - **Timeline** — day, month, calendar-season, and year views plus weekday/hour

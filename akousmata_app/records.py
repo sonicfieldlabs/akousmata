@@ -16,7 +16,7 @@ from typing import Any
 from akousmata_app import AKOUSMATA_CONTRACT
 from akousmata_app.paths import ensure_pyakousma
 
-EDITABLE_FIELDS = {"tags", "annotations", "summary"}
+EDITABLE_FIELDS = {"tags", "annotations", "summary", "location"}
 
 # Meteorological convention, not an ecological claim (see /api/timeline docs).
 _SEASON_BY_MONTH = {
@@ -98,6 +98,7 @@ def card(record: dict[str, Any]) -> dict[str, Any]:
         "source_type": provenance.get("source_type"),
         "duration_seconds": audio.get("duration_seconds"),
         "has_audio": bool(audio.get("uri")),
+        "has_location": isinstance((record.get("location") or {}).get("lat"), (int, float)),
         "parent_count": len(lineage.get("parent_akousma_ids") or []),
         "relation_count": len(lineage.get("relations") or []),
         "listener_kinds": sorted({ns.split(".")[0] for ns in (record.get("listening") or {})}),
@@ -162,6 +163,24 @@ def _wav_duration(path: Path) -> float | None:
         return None
 
 
+def _checked_location(value: dict[str, Any]) -> dict[str, Any]:
+    """Validate a location dict through the spec builder (v1.2 ranges/enums)."""
+    lib = _akousma()
+    label = value.get("label")
+    try:
+        return lib.location(
+            value.get("lat"),
+            value.get("lon"),
+            accuracy_m=value.get("accuracy_m"),
+            altitude_m=value.get("altitude_m"),
+            label=str(label).strip() or None if label is not None else None,
+            source=value.get("source") or "manual",
+            captured_at=value.get("captured_at"),
+        )
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"invalid location: {exc}") from exc
+
+
 def create_manual_memory(
     store,
     *,
@@ -174,6 +193,7 @@ def create_manual_memory(
     audio_path: str | None = None,
     parent_akousma_ids: list[str] | None = None,
     relations: list[dict[str, Any]] | None = None,
+    location: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """A human listening event becomes an akousma: what you heard belongs in
     the same library as what the agents heard, with the listener declared."""
@@ -202,6 +222,10 @@ def create_manual_memory(
         payload["heard_at"] = heard_at
     payload["kind"] = kind
 
+    checked_location = _checked_location(location) if location else None
+    if checked_location is not None and not checked_location.get("label") and place:
+        checked_location["label"] = place
+
     record = lib.new_akousma(
         audio=audio,
         originating_app="akousmata",
@@ -219,6 +243,7 @@ def create_manual_memory(
         relations=relations,
         tags=tags,
         summary=summary,
+        location=checked_location,
     )
     record["extensions"]["akousmata.app"] = {"listener": {"type": "human", "process": "manual_entry"}}
     store.put(record)
@@ -226,7 +251,10 @@ def create_manual_memory(
 
 
 def update_record(store, akousma_id: str, patch: dict[str, Any]) -> dict[str, Any]:
-    """Edit the app-owned fields only (tags, annotations, summary)."""
+    """Edit the app-owned fields only (tags, annotations, summary, location).
+
+    Location is listener-annotatable per spec v1.2: the navigator may add or
+    correct where a sound was heard after the fact; ``{}`` clears it."""
     unknown = set(patch) - EDITABLE_FIELDS
     if unknown:
         raise ValueError(f"not editable: {', '.join(sorted(unknown))}. Editable: {', '.join(sorted(EDITABLE_FIELDS))}")
@@ -243,6 +271,14 @@ def update_record(store, akousma_id: str, patch: dict[str, Any]) -> dict[str, An
             record.pop("summary", None)
     if "annotations" in patch and isinstance(patch["annotations"], dict):
         record.setdefault("annotations", {}).update(patch["annotations"])
+    if "location" in patch:
+        value = patch["location"]
+        if not isinstance(value, dict):
+            raise ValueError("location must be an object with lat/lon, or {} to clear it")
+        if not value:
+            record.pop("location", None)
+        else:
+            record["location"] = _checked_location(value)
     record.setdefault("extensions", {}).setdefault("akousmata.app", {})["edited_at"] = _utc_now()
     store.put(record)
     return record
@@ -332,6 +368,38 @@ def timeline(store, *, bucket: str = "day") -> dict[str, Any]:
             "note": "Season labels are calendar groupings (DJF/MAM/JJA/SON), not ecological-season claims.",
         },
     }
+
+
+def map_points(store) -> dict[str, Any]:
+    """The listening map's feed: every located memory as a light point."""
+    if hasattr(store, "locations"):
+        located = store.locations(limit=10000)
+    else:  # py-akousma < 0.3: no hoisted lat/lon columns — scan and filter
+        located = [
+            record
+            for record in store.query(limit=10000)
+            if isinstance((record.get("location") or {}).get("lat"), (int, float))
+            and isinstance((record.get("location") or {}).get("lon"), (int, float))
+        ]
+    total = store.conn.execute("SELECT COUNT(*) AS n FROM akousmata").fetchone()["n"]
+    points = []
+    for record in located:
+        loc = record.get("location") or {}
+        cap = record.get("capture") or {}
+        points.append({
+            "akousma_id": record["akousma_id"],
+            "lat": loc.get("lat"),
+            "lon": loc.get("lon"),
+            "label": loc.get("label"),
+            "accuracy_m": loc.get("accuracy_m"),
+            "summary": summary_line(record),
+            "created_at": record.get("created_at"),
+            "originating_app": (record.get("provenance") or {}).get("originating_app"),
+            "tags": list(record.get("tags") or [])[:6],
+            "direction": cap.get("direction"),
+            "has_audio": bool((record.get("audio") or {}).get("uri")),
+        })
+    return {"points": points, "located": len(points), "unlocated": total - len(points), "total": total}
 
 
 def consent_audit(store) -> dict[str, Any]:

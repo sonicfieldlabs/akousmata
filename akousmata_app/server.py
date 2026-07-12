@@ -59,12 +59,14 @@ class ManualMemory(BaseModel):
     audio_path: str | None = None
     parent_akousma_ids: list[str] = Field(default_factory=list)
     relations: list[dict[str, Any]] = Field(default_factory=list)
+    location: dict[str, Any] | None = None
 
 
 class RecordPatch(BaseModel):
     tags: list[str] | None = None
     annotations: dict[str, Any] | None = None
     summary: str | None = None
+    location: dict[str, Any] | None = None  # {} clears; {lat, lon, …} sets
 
 
 class RelationBody(BaseModel):
@@ -166,8 +168,11 @@ def create_record(body: ManualMemory) -> dict[str, Any]:
                 audio_path=body.audio_path,
                 parent_akousma_ids=body.parent_akousma_ids,
                 relations=body.relations,
+                location=body.location,
             )
         except FileNotFoundError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         wiki.ingest(store, record["akousma_id"])
         return {"record": record}
@@ -269,6 +274,16 @@ def tags() -> dict[str, Any]:
     store = _store()
     try:
         return {"tags": store.tags() if hasattr(store, "tags") else []}
+    finally:
+        store.close()
+
+
+@app.get("/api/map")
+def map_view() -> dict[str, Any]:
+    """The listening map's feed — every located memory, plus the unlocated count."""
+    store = _store()
+    try:
+        return records.map_points(store)
     finally:
         store.close()
 
@@ -395,16 +410,28 @@ async def research_events(session_id: str) -> StreamingResponse:
 async def change_events() -> StreamingResponse:
     async def stream():
         cursor = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-        while True:
-            await asyncio.sleep(2.0)
-            store = open_store()
-            try:
-                fresh = store.changed_since(cursor, limit=50) if hasattr(store, "changed_since") else []
-            finally:
+        # One long-lived read connection per subscriber instead of a fresh
+        # connect + DDL pass every poll; WAL autocommit reads always see the
+        # latest snapshot. Reopened once on any error.
+        store = None
+        try:
+            while True:
+                await asyncio.sleep(2.0)
+                try:
+                    if store is None:
+                        store = open_store()
+                    fresh = store.changed_since(cursor, limit=50) if hasattr(store, "changed_since") else []
+                except Exception:
+                    if store is not None:
+                        store.close()
+                    store = None
+                    continue
+                for record in fresh:
+                    cursor = max(cursor, str(record.get("created_at") or cursor))
+                    yield f"data: {json.dumps(records.card(record), ensure_ascii=False)}\n\n"
+        finally:
+            if store is not None:
                 store.close()
-            for record in fresh:
-                cursor = max(cursor, str(record.get("created_at") or cursor))
-                yield f"data: {json.dumps(records.card(record), ensure_ascii=False)}\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream")
 
@@ -514,6 +541,7 @@ class DiaryBody(BaseModel):
     text: str
     tags: list[str] = Field(default_factory=list)
     place: str | None = None
+    location: dict[str, Any] | None = None
 
 
 @app.post("/api/diary")
@@ -531,6 +559,7 @@ def diary_entry(body: DiaryBody) -> dict[str, Any]:
             tags=list(dict.fromkeys([*body.tags, "diary"])),
             place=body.place,
             kind="diary",
+            location=body.location,
         )
         wiki.ingest(store, record["akousma_id"])
         day = str(record.get("created_at") or "")[:10]
@@ -683,7 +712,7 @@ def listen_again(akousma_id: str, body: ListenAgainBody) -> dict[str, Any]:
             namespace = f"akousmata.listen_again.{counter}"
             counter += 1
         listening[namespace] = {
-            "contract": "akousmata/v0.2",
+            "contract": AKOUSMATA_CONTRACT,
             "created_at": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
             "summary": compact.get("short_summary") or compact.get("title") or "fresh oída pass",
             "payload": compact,

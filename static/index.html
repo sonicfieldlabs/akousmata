@@ -21,6 +21,7 @@
       <button data-tab="constellations">Constellations</button>
       <button data-tab="timeline">Timeline</button>
       <button data-tab="graph">Graph</button>
+      <button data-tab="map">Map</button>
       <button data-tab="wiki">Wiki</button>
       <button data-tab="diary">Diary</button>
       <button data-tab="research">Research</button>
@@ -61,6 +62,13 @@
           <label>notes</label><textarea id="m-notes" placeholder="longer notes: how it sounded, what it did to you…"></textarea>
           <label>tags</label><input type="text" id="m-tags" placeholder="comma, separated, tags" />
           <label>place</label><input type="text" id="m-place" placeholder="where (optional)" />
+          <label>location</label>
+          <div class="row">
+            <input type="text" id="m-lat" placeholder="lat" style="width:110px" />
+            <input type="text" id="m-lon" placeholder="lon" style="width:110px" />
+            <button class="btn" id="m-locate" type="button">use my location</button>
+            <span class="note" id="m-loc-status"></span>
+          </div>
           <label>heard at</label><input type="text" id="m-heard" placeholder="when (optional, free text or ISO)" />
           <label>kind</label>
           <select id="m-kind">
@@ -117,6 +125,23 @@
         <span class="note" id="graph-status"></span>
       </div>
       <div id="graph-wrap"><canvas id="graph"></canvas></div>
+    </main>
+
+    <main id="tab-map" hidden>
+      <div class="graph-legend">
+        <span class="note" id="map-status">the listening map</span>
+        <span class="spacer" style="flex:1"></span>
+        <label class="note" title="loads tiles from tile.openstreetmap.org — off by default, the map stays local without it">
+          <input type="checkbox" id="map-tiles" /> street tiles (remote)
+        </label>
+        <button class="btn" id="map-fit">fit all</button>
+      </div>
+      <div id="map-wrap">
+        <canvas id="map"></canvas>
+        <div id="map-tooltip" hidden></div>
+        <div id="map-attrib" hidden>© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors</div>
+      </div>
+      <p class="note">each point is a listened memory — not where a sound is, but where a listening happened. click a point to open it; click a cluster to get closer. geotag memories from their “place” section.</p>
     </main>
 
     <main id="tab-wiki" hidden>

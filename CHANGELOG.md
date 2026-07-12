@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.3.0 — The Listening Map
+
+- **Map view**: a hand-rolled Web-Mercator canvas (no map library) plotting
+  where listenings happened — embedded Natural Earth 110m coastlines by
+  default, pan/zoom/cluster/click-through to the library, and an **opt-in**
+  OSM street-tile layer (off by default; the only remote call the UI can
+  make, and it says so).
+- **Geolocation (spec v1.2)**: records carry an optional consent-scoped
+  `location {lat, lon, accuracy_m, altitude_m, label, source, captured_at}`.
+  Manual memories and diary entries can attach it ("use my location" or
+  typed coordinates); any record can be geotagged, corrected, or cleared
+  from its new "place" section — location is listener-annotatable.
+- **Capture rendering (spec v1.2)**: the `capture` block (direction
+  past/future/live · window seconds · trigger) shows in the detail pane;
+  the capturing app's account is displayed, never edited here.
+- **Open records (spec v1.2)**: unknown top-level fields are preserved and
+  rendered in a "more details" section instead of being invisible.
+- **Privacy**: export packs strip `location` unconditionally — where someone
+  listens is as sensitive as what they heard.
+- **Performance**: kin-by-resemblance now scores against a cached corpus
+  (invalidated on any store write) instead of re-parsing every record per
+  detail open; the SSE change feed holds one store connection per subscriber
+  instead of reconnecting every poll; `store.tags()` and `created_at`
+  ordering ride the new py-akousma 0.3 fast paths.
+- New endpoint `GET /api/map`; record cards gain `has_location`; store floor
+  raised to `py-akousma >= 0.3.0`; 28 hermetic tests.
+
 ## 0.2.0 — Living with the Library
 
 - **Constellations**: saved, ordered selections of memories playable as

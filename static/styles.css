@@ -128,6 +128,24 @@ audio { width: 100%; margin: 8px 0; }
 .legend-swatch { display: inline-block; width: 18px; height: 2px; vertical-align: middle; margin-right: 5px; background: var(--ink); }
 .legend-swatch.dashed { background: repeating-linear-gradient(90deg, var(--soft) 0 4px, transparent 4px 8px); }
 
+/* map (the listening map) */
+#map-wrap { position: relative; }
+#map {
+  width: 100%; height: 560px; background: #fdfdfc; border: 1px solid var(--line);
+  border-radius: var(--radius); cursor: grab; touch-action: none; display: block;
+}
+#map:active { cursor: grabbing; }
+#map-tooltip {
+  position: absolute; background: var(--primary); color: #fff; border-radius: var(--radius-s);
+  padding: 7px 10px; font-size: 12.5px; max-width: 300px; pointer-events: none; z-index: 4;
+}
+#map-tooltip .note { color: #cfcfc9; font-size: 11.5px; }
+#map-attrib {
+  position: absolute; right: 8px; bottom: 8px; font-size: 10.5px; color: var(--faint);
+  background: rgba(255, 255, 255, 0.82); padding: 1px 6px; border-radius: 4px;
+}
+#map-attrib a { color: var(--muted); }
+
 /* wiki */
 .wiki { display: grid; grid-template-columns: 250px 1fr; gap: 18px; }
 @media (max-width: 900px) { .wiki { grid-template-columns: 1fr; } }

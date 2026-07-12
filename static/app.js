@@ -45,7 +45,7 @@ async function api(path, options = {}) {
 
 /* ── tabs ─────────────────────────────────────────────────────────────── */
 
-const TABS = ["library", "constellations", "timeline", "graph", "wiki", "diary", "research", "audit", "settings"];
+const TABS = ["library", "constellations", "timeline", "graph", "map", "wiki", "diary", "research", "audit", "settings"];
 
 $("tabs").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-tab]");
@@ -56,6 +56,7 @@ $("tabs").addEventListener("click", (event) => {
   if (state.tab === "constellations") loadConstellations();
   if (state.tab === "timeline") loadTimeline();
   if (state.tab === "graph") loadGraph(state.selected || null);
+  if (state.tab === "map") loadMap();
   if (state.tab === "wiki") loadWiki();
   if (state.tab === "diary") loadDiary();
   if (state.tab === "audit") { loadAudit(); loadPacks(); }
@@ -92,6 +93,7 @@ async function loadRecords() {
     line2.append(el("span", `badge app-${record.originating_app || "unknown"}`, record.originating_app || "?"));
     if (record.origin) line2.append(el("span", "badge", record.origin));
     if (record.has_audio) line2.append(el("span", "badge", "audio"));
+    if (record.has_location) line2.append(el("span", "minitag", "⌖"));
     if (record.parent_count) line2.append(el("span", "minitag", `⭡${record.parent_count}`));
     if (record.relation_count) line2.append(el("span", "minitag", `≈${record.relation_count}`));
     for (const tag of record.tags.slice(0, 4)) line2.append(el("span", "minitag", `#${tag}`));
@@ -152,6 +154,15 @@ function renderDetail(data) {
   if (provenance.consent_status) kvRow(grid, "consent", provenance.consent_status);
   if ((provenance.pipeline_effects || []).length) kvRow(grid, "pipeline", provenance.pipeline_effects.join(" → "));
   if ((record.audio || {}).duration_seconds) kvRow(grid, "duration", `${record.audio.duration_seconds}s`);
+  const capture = record.capture || {};
+  if (capture.direction || capture.seconds || capture.trigger) {
+    const parts = [
+      capture.direction,
+      capture.seconds ? `${capture.seconds}s window` : null,
+      capture.trigger ? `via ${capture.trigger}` : null,
+    ].filter(Boolean);
+    kvRow(grid, "capture", parts.join(" · "));
+  }
   pane.append(grid);
 
   if (data.audio_available) {
@@ -181,6 +192,78 @@ function renderDetail(data) {
   tagSection.append(tagRow);
   pane.append(tagSection);
 
+  // place (spec v1.2 location — listener-annotatable: add or correct it here)
+  const placeSection = el("div", "section");
+  placeSection.append(el("h2", "", "place"));
+  const loc = record.location && typeof record.location.lat === "number" ? record.location : null;
+  const placeRow = el("div", "row");
+  if (loc) {
+    const bits = [loc.label, `${loc.lat.toFixed(4)}, ${loc.lon.toFixed(4)}`];
+    if (loc.accuracy_m) bits.push(`±${Math.round(loc.accuracy_m)} m`);
+    if (loc.source) bits.push(loc.source);
+    placeRow.append(el("span", "", `⌖ ${bits.filter(Boolean).join(" · ")}`));
+    const showButton = el("button", "btn", "show on the map");
+    showButton.addEventListener("click", () => {
+      MAP.focus = { lat: loc.lat, lon: loc.lon };
+      document.querySelector('[data-tab="map"]').click();
+    });
+    placeRow.append(showButton);
+  } else {
+    placeRow.append(el("span", "note", "no location — geotag this memory to see it on the listening map"));
+  }
+  const placeEdit = el("button", "btn", loc ? "edit" : "add location");
+  placeRow.append(placeEdit);
+  if (loc) {
+    const placeClear = el("button", "btn danger", "remove");
+    placeClear.addEventListener("click", async () => {
+      await api(`/api/records/${record.akousma_id}`, { method: "PATCH", body: JSON.stringify({ location: {} }) });
+      toast("location removed");
+      selectRecord(record.akousma_id);
+    });
+    placeRow.append(placeClear);
+  }
+  placeSection.append(placeRow);
+  const placeEditor = el("div", "row");
+  placeEditor.hidden = true;
+  placeEditor.style.marginTop = "8px";
+  const latInput = el("input");
+  latInput.type = "text"; latInput.placeholder = "lat"; latInput.style.width = "110px";
+  const lonInput = el("input");
+  lonInput.type = "text"; lonInput.placeholder = "lon"; lonInput.style.width = "110px";
+  const labelInput = el("input");
+  labelInput.type = "text"; labelInput.placeholder = "place name (optional)"; labelInput.style.flex = "1";
+  if (loc) { latInput.value = loc.lat; lonInput.value = loc.lon; labelInput.value = loc.label || ""; }
+  let geoSource = "manual";
+  let geoAccuracy = null;
+  for (const input of [latInput, lonInput]) input.addEventListener("input", () => { geoSource = "manual"; geoAccuracy = null; });
+  const hereButton = el("button", "btn", "use my location");
+  hereButton.addEventListener("click", () => {
+    if (!navigator.geolocation) { toast("no geolocation in this browser"); return; }
+    navigator.geolocation.getCurrentPosition((position) => {
+      latInput.value = position.coords.latitude.toFixed(5);
+      lonInput.value = position.coords.longitude.toFixed(5);
+      geoSource = "gps";
+      geoAccuracy = position.coords.accuracy || null;
+    }, () => toast("location permission denied"));
+  });
+  const placeSave = el("button", "btn primary", "save place");
+  placeSave.addEventListener("click", async () => {
+    const lat = parseFloat(latInput.value);
+    const lon = parseFloat(lonInput.value);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) { toast("lat and lon are needed"); return; }
+    const body = { location: { lat, lon, label: labelInput.value.trim() || null, source: geoSource } };
+    if (geoAccuracy) body.location.accuracy_m = geoAccuracy;
+    try {
+      await api(`/api/records/${record.akousma_id}`, { method: "PATCH", body: JSON.stringify(body) });
+      toast("place saved");
+      selectRecord(record.akousma_id);
+    } catch (error) { toast(error.message); }
+  });
+  placeEditor.append(latInput, lonInput, labelInput, hereButton, placeSave);
+  placeEdit.addEventListener("click", () => { placeEditor.hidden = !placeEditor.hidden; });
+  placeSection.append(placeEditor);
+  pane.append(placeSection);
+
   // listenings
   const listening = record.listening || {};
   if (Object.keys(listening).length) {
@@ -205,6 +288,27 @@ function renderDetail(data) {
       section.append(box);
     }
     pane.append(section);
+  }
+
+  // open record: top-level fields this navigator doesn't know yet (spec v1.2
+  // preserves them; showing them keeps the record honest about what it holds)
+  const KNOWN_TOP = new Set([
+    "akousma_id", "schema_version", "created_at", "session_id", "audio", "provenance",
+    "listening", "lineage", "tags", "annotations", "extensions", "summary", "location", "capture",
+  ]);
+  const extraKeys = Object.keys(record).filter((key) => !KNOWN_TOP.has(key)).sort();
+  if (extraKeys.length) {
+    const openSection = el("div", "section");
+    openSection.append(el("h2", "", "more details (open record)"));
+    for (const key of extraKeys) {
+      const box = el("div", "listening-entry");
+      box.append(el("div", "ns", key));
+      const value = record[key];
+      if (typeof value === "string") box.append(el("div", "", value));
+      else box.append(el("pre", "mono", JSON.stringify(value, null, 2).slice(0, 900)));
+      openSection.append(box);
+    }
+    pane.append(openSection);
   }
 
   // lineage + kinship
@@ -423,6 +527,23 @@ for (const id of ["f-text", "f-app", "f-origin"]) {
 }
 $("btn-add").addEventListener("click", () => { $("add-form").hidden = !$("add-form").hidden; });
 $("m-cancel").addEventListener("click", () => { $("add-form").hidden = true; });
+
+const manualGeo = { source: "manual", accuracy_m: null };
+for (const id of ["m-lat", "m-lon"]) {
+  $(id).addEventListener("input", () => { manualGeo.source = "manual"; manualGeo.accuracy_m = null; $("m-loc-status").textContent = ""; });
+}
+$("m-locate").addEventListener("click", () => {
+  if (!navigator.geolocation) { $("m-loc-status").textContent = "no geolocation in this browser"; return; }
+  $("m-loc-status").textContent = "asking…";
+  navigator.geolocation.getCurrentPosition((position) => {
+    $("m-lat").value = position.coords.latitude.toFixed(5);
+    $("m-lon").value = position.coords.longitude.toFixed(5);
+    manualGeo.source = "gps";
+    manualGeo.accuracy_m = position.coords.accuracy || null;
+    $("m-loc-status").textContent = manualGeo.accuracy_m ? `±${Math.round(manualGeo.accuracy_m)} m` : "located";
+  }, () => { $("m-loc-status").textContent = "permission denied"; });
+});
+
 $("m-save").addEventListener("click", async () => {
   const body = {
     summary: $("m-summary").value.trim(),
@@ -433,11 +554,20 @@ $("m-save").addEventListener("click", async () => {
     kind: $("m-kind").value,
     audio_path: $("m-audio").value.trim() || null,
   };
+  const lat = parseFloat($("m-lat").value);
+  const lon = parseFloat($("m-lon").value);
+  if (Number.isFinite(lat) && Number.isFinite(lon)) {
+    body.location = { lat, lon, source: manualGeo.source };
+    if (manualGeo.accuracy_m) body.location.accuracy_m = manualGeo.accuracy_m;
+  }
   try {
     const data = await api("/api/records", { method: "POST", body: JSON.stringify(body) });
     $("m-status").textContent = "";
     $("add-form").hidden = true;
-    for (const id of ["m-summary", "m-notes", "m-tags", "m-place", "m-heard", "m-audio"]) $(id).value = "";
+    for (const id of ["m-summary", "m-notes", "m-tags", "m-place", "m-heard", "m-audio", "m-lat", "m-lon"]) $(id).value = "";
+    $("m-loc-status").textContent = "";
+    manualGeo.source = "manual";
+    manualGeo.accuracy_m = null;
     toast("remembered");
     await loadRecords();
     await loadTags();
@@ -829,6 +959,331 @@ function drawGraph() {
   };
 }
 
+/* ── map (the listening map — where listenings happened) ─────────────────
+   Hand-rolled Web-Mercator canvas, no map library: embedded Natural Earth
+   coastlines by default, optional OSM raster tiles behind an explicit
+   opt-in (the only remote call this app can make, and it is off by default). */
+
+const MAP = {
+  land: null, points: [], unlocated: 0,
+  center: { x: 0.5, y: 0.42 },   // web-mercator unit coords
+  zoom: 1.6,                      // world = 256 * 2^zoom px
+  tiles: false, tileCache: new Map(), drawn: [],
+  focus: null, raf: 0, booted: false, wired: false,
+};
+
+const mercX = (lon) => (lon + 180) / 360;
+function mercY(lat) {
+  const s = Math.min(0.9999, Math.max(-0.9999, Math.sin((lat * Math.PI) / 180)));
+  return 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI);
+}
+const worldSize = () => 256 * 2 ** MAP.zoom;
+
+function scheduleMapDraw() {
+  if (MAP.raf) return;
+  MAP.raf = requestAnimationFrame(() => { MAP.raf = 0; drawMap(); });
+}
+
+async function loadMap() {
+  if (!MAP.land) {
+    try {
+      const data = await (await fetch(appPath("/static/land-110m.json"))).json();
+      MAP.land = data.rings || [];
+    } catch { MAP.land = []; }
+  }
+  const data = await api("/api/map");
+  MAP.points = data.points
+    .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon))
+    .map((p) => ({ ...p, mx: mercX(p.lon), my: mercY(p.lat) }));
+  MAP.unlocated = data.unlocated;
+  $("map-status").textContent = `${data.located} located · ${data.unlocated} without location`;
+  if (!MAP.wired) wireMap();
+  if (MAP.focus) {
+    MAP.center = { x: mercX(MAP.focus.lon), y: mercY(MAP.focus.lat) };
+    MAP.zoom = Math.max(MAP.zoom, 12);
+    MAP.focus = null;
+  } else if (!MAP.booted) {
+    fitMap();
+  }
+  MAP.booted = true;
+  scheduleMapDraw();
+}
+
+function fitMap() {
+  const w = $("map").parentElement.clientWidth || 800;
+  const h = 560;
+  if (!MAP.points.length) {
+    MAP.center = { x: 0.5, y: 0.42 };
+    MAP.zoom = Math.max(1.2, Math.log2(Math.max(1, w / 300)));
+    return;
+  }
+  const xs = MAP.points.map((p) => p.mx);
+  const ys = MAP.points.map((p) => p.my);
+  MAP.center = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
+  const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), 1e-4);
+  MAP.zoom = Math.min(13, Math.max(1.2, Math.log2((Math.min(w, h) * 0.55) / (256 * span))));
+}
+
+function wireMap() {
+  MAP.wired = true;
+  const canvas = $("map");
+  let drag = null;
+  canvas.addEventListener("pointerdown", (event) => {
+    drag = { x: event.clientX, y: event.clientY, moved: false };
+    try { canvas.setPointerCapture(event.pointerId); } catch {}
+  });
+  canvas.addEventListener("pointermove", (event) => {
+    if (drag) {
+      const dx = event.clientX - drag.x;
+      const dy = event.clientY - drag.y;
+      if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
+      MAP.center.x = (((MAP.center.x - dx / worldSize()) % 1) + 1) % 1;
+      MAP.center.y = Math.min(1, Math.max(0, MAP.center.y - dy / worldSize()));
+      drag.x = event.clientX;
+      drag.y = event.clientY;
+      $("map-tooltip").hidden = true;
+      scheduleMapDraw();
+    } else {
+      hoverMap(event);
+    }
+  });
+  canvas.addEventListener("pointerup", (event) => {
+    const wasDrag = drag && drag.moved;
+    drag = null;
+    if (!wasDrag) clickMap(event);
+  });
+  canvas.addEventListener("pointercancel", () => { drag = null; });
+  canvas.addEventListener("pointerleave", () => { $("map-tooltip").hidden = true; });
+  canvas.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    zoomMapAt(event, -event.deltaY * 0.0035);
+  }, { passive: false });
+  canvas.addEventListener("dblclick", (event) => zoomMapAt(event, 1));
+  $("map-fit").addEventListener("click", () => { fitMap(); scheduleMapDraw(); });
+  const tilesBox = $("map-tiles");
+  MAP.tiles = localStorage.getItem("akousmata.map.tiles") === "1";
+  tilesBox.checked = MAP.tiles;
+  $("map-attrib").hidden = !MAP.tiles;
+  tilesBox.addEventListener("change", () => {
+    MAP.tiles = tilesBox.checked;
+    localStorage.setItem("akousmata.map.tiles", MAP.tiles ? "1" : "0");
+    $("map-attrib").hidden = !MAP.tiles;
+    scheduleMapDraw();
+  });
+  window.addEventListener("resize", () => { if (state.tab === "map") scheduleMapDraw(); });
+}
+
+function eventMerc(event) {
+  const rect = $("map").getBoundingClientRect();
+  const px = event.clientX - rect.left;
+  const py = event.clientY - rect.top;
+  return {
+    px, py,
+    x: MAP.center.x + (px - rect.width / 2) / worldSize(),
+    y: MAP.center.y + (py - rect.height / 2) / worldSize(),
+  };
+}
+
+function zoomMapAt(event, delta) {
+  const before = eventMerc(event);
+  MAP.zoom = Math.min(17, Math.max(1.2, MAP.zoom + delta));
+  const after = eventMerc(event);
+  MAP.center.x = (((MAP.center.x + before.x - after.x) % 1) + 1) % 1;
+  MAP.center.y = Math.min(1, Math.max(0, MAP.center.y + before.y - after.y));
+  scheduleMapDraw();
+}
+
+function drawMap() {
+  const canvas = $("map");
+  const wrap = canvas.parentElement;
+  const w = wrap.clientWidth;
+  const h = 560;
+  canvas.width = w * devicePixelRatio;
+  canvas.height = h * devicePixelRatio;
+  canvas.style.height = `${h}px`;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const size = worldSize();
+  ctx.fillStyle = "#fdfdfc";
+  ctx.fillRect(0, 0, w, h);
+  if (MAP.tiles) drawTiles(ctx, w, h, size);
+  else {
+    drawGraticule(ctx, w, h, size);
+    drawLand(ctx, w, h, size);
+  }
+  drawPoints(ctx, w, h, size);
+}
+
+const mapOffsets = (size, w) => (size > w * 2 ? [0] : [-size, 0, size]);
+
+function drawLand(ctx, w, h, size) {
+  if (!MAP.land || !MAP.land.length) return;
+  for (const offset of mapOffsets(size, w)) {
+    const path = new Path2D();
+    for (const ring of MAP.land) {
+      for (let i = 0; i < ring.length; i += 1) {
+        const x = (mercX(ring[i][0]) - MAP.center.x) * size + w / 2 + offset;
+        const y = (mercY(ring[i][1]) - MAP.center.y) * size + h / 2;
+        if (i === 0) path.moveTo(x, y);
+        else path.lineTo(x, y);
+      }
+      path.closePath();
+    }
+    ctx.fillStyle = "#efefeb";
+    ctx.fill(path, "evenodd");
+    ctx.strokeStyle = "#dcdcd6";
+    ctx.lineWidth = 1;
+    ctx.stroke(path);
+  }
+}
+
+function drawGraticule(ctx, w, h, size) {
+  ctx.strokeStyle = "#eeeeea";
+  ctx.lineWidth = 1;
+  for (const offset of mapOffsets(size, w)) {
+    for (let lon = -180; lon < 180; lon += 30) {
+      const x = (mercX(lon) - MAP.center.x) * size + w / 2 + offset;
+      if (x < -2 || x > w + 2) continue;
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+    }
+  }
+  for (let lat = -60; lat <= 80; lat += 20) {
+    const y = (mercY(lat) - MAP.center.y) * size + h / 2;
+    if (y < -2 || y > h + 2) continue;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+}
+
+function drawTiles(ctx, w, h, size) {
+  const z = Math.max(1, Math.min(19, Math.round(MAP.zoom)));
+  const n = 2 ** z;
+  const tilePx = size / n;
+  const x0 = Math.floor((MAP.center.x - w / 2 / size) * n);
+  const x1 = Math.floor((MAP.center.x + w / 2 / size) * n);
+  const y0 = Math.max(0, Math.floor((MAP.center.y - h / 2 / size) * n));
+  const y1 = Math.min(n - 1, Math.floor((MAP.center.y + h / 2 / size) * n));
+  for (let tx = x0; tx <= x1; tx += 1) {
+    for (let ty = y0; ty <= y1; ty += 1) {
+      const img = mapTile(z, ((tx % n) + n) % n, ty);
+      if (!img) continue;
+      const sx = (tx / n - MAP.center.x) * size + w / 2;
+      const sy = (ty / n - MAP.center.y) * size + h / 2;
+      ctx.drawImage(img, sx, sy, tilePx + 0.5, tilePx + 0.5);
+    }
+  }
+}
+
+function mapTile(z, x, y) {
+  const key = `${z}/${x}/${y}`;
+  const cached = MAP.tileCache.get(key);
+  if (cached) return cached.complete && cached.naturalWidth ? cached : null;
+  if (MAP.tileCache.size > 300) MAP.tileCache.delete(MAP.tileCache.keys().next().value);
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload = () => { if (state.tab === "map") scheduleMapDraw(); };
+  img.src = `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
+  MAP.tileCache.set(key, img);
+  return null;
+}
+
+function drawPoints(ctx, w, h, size) {
+  MAP.drawn = [];
+  const cell = 36;
+  const grid = new Map();
+  for (const p of MAP.points) {
+    let sx = (p.mx - MAP.center.x) * size + w / 2;
+    sx -= Math.round((sx - w / 2) / size) * size; // nearest world copy
+    const sy = (p.my - MAP.center.y) * size + h / 2;
+    if (sx < -24 || sx > w + 24 || sy < -24 || sy > h + 24) continue;
+    const key = `${Math.floor(sx / cell)}:${Math.floor(sy / cell)}`;
+    const bucket = grid.get(key) || { xs: 0, ys: 0, items: [] };
+    bucket.xs += sx;
+    bucket.ys += sy;
+    bucket.items.push(p);
+    grid.set(key, bucket);
+  }
+  ctx.font = "11px -apple-system, sans-serif";
+  for (const bucket of grid.values()) {
+    const x = bucket.xs / bucket.items.length;
+    const y = bucket.ys / bucket.items.length;
+    if (bucket.items.length > 1) {
+      const r = Math.min(17, 9 + bucket.items.length);
+      ctx.beginPath(); ctx.arc(x, y, r + 3, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(169, 118, 47, 0.15)"; ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = "#a9762f"; ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(String(bucket.items.length), x, y + 0.5);
+      MAP.drawn.push({ x, y, r: r + 3, kind: "cluster", items: bucket.items });
+    } else {
+      const p = bucket.items[0];
+      ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(169, 118, 47, 0.14)"; ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = APP_COLORS[p.originating_app] || APP_COLORS.unknown; ctx.fill();
+      if (p.akousma_id === state.selected) { ctx.strokeStyle = "#1d1d1b"; ctx.lineWidth = 2; ctx.stroke(); }
+      MAP.drawn.push({ x, y, r: 11, kind: "point", p });
+    }
+  }
+  ctx.textAlign = "start";
+  ctx.textBaseline = "alphabetic";
+}
+
+function mapHit(event) {
+  const rect = $("map").getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+  let best = null;
+  for (const item of MAP.drawn) {
+    const d = Math.hypot(item.x - x, item.y - y);
+    if (d <= item.r + 2 && (!best || d < best.d)) best = { ...item, d };
+  }
+  return best;
+}
+
+function hoverMap(event) {
+  const hit = mapHit(event);
+  const tip = $("map-tooltip");
+  $("map").style.cursor = hit ? "pointer" : "grab";
+  if (!hit) { tip.hidden = true; return; }
+  tip.replaceChildren();
+  if (hit.kind === "cluster") {
+    tip.append(el("div", "", `${hit.items.length} memories here — click to get closer`));
+    for (const p of hit.items.slice(0, 4)) tip.append(el("div", "note", (p.summary || p.akousma_id).slice(0, 60)));
+    if (hit.items.length > 4) tip.append(el("div", "note", `… ${hit.items.length - 4} more`));
+  } else {
+    tip.append(el("div", "", (hit.p.summary || hit.p.akousma_id).slice(0, 90)));
+    const meta = [
+      hit.p.label,
+      (hit.p.created_at || "").slice(0, 10),
+      hit.p.originating_app,
+      hit.p.direction ? `${hit.p.direction} listen` : null,
+    ].filter(Boolean).join(" · ");
+    if (meta) tip.append(el("div", "note", meta));
+  }
+  const rect = $("map").getBoundingClientRect();
+  tip.style.left = `${Math.min(event.clientX - rect.left + 14, rect.width - 220)}px`;
+  tip.style.top = `${event.clientY - rect.top + 10}px`;
+  tip.hidden = false;
+}
+
+function clickMap(event) {
+  const hit = mapHit(event);
+  if (!hit) return;
+  if (hit.kind === "cluster") {
+    MAP.center = {
+      x: hit.items.reduce((sum, p) => sum + p.mx, 0) / hit.items.length,
+      y: hit.items.reduce((sum, p) => sum + p.my, 0) / hit.items.length,
+    };
+    MAP.zoom = Math.min(17, MAP.zoom + 1.8);
+    scheduleMapDraw();
+  } else {
+    document.querySelector('[data-tab="library"]').click();
+    selectRecord(hit.p.akousma_id);
+  }
+}
+
 /* ── wiki ─────────────────────────────────────────────────────────────── */
 
 function renderMarkdown(markdown) {
@@ -1013,6 +1468,7 @@ function watchChanges() {
     const record = JSON.parse(message.data);
     toast(`new memory: ${record.summary?.slice(0, 60) || record.akousma_id} (${record.originating_app})`);
     if (state.tab === "library") { loadRecords(); loadTags(); }
+    if (state.tab === "map") loadMap();
   };
 }
 

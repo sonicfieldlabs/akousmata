@@ -36,9 +36,12 @@ def exportable(record: dict[str, Any]) -> tuple[bool, str]:
 
 
 def sanitize(record: dict[str, Any], *, include_audio: bool) -> dict[str, Any]:
-    """A copy safe to share: no personal annotations, no local paths."""
+    """A copy safe to share: no personal annotations, no local paths, and no
+    geolocation — where someone listens is as sensitive as what they heard
+    (spec v1.2 consent rule)."""
     clean = json.loads(json.dumps(record, ensure_ascii=False))
     clean.pop("annotations", None)
+    clean.pop("location", None)
     extensions = clean.get("extensions") or {}
     extensions.pop("akousmata.app", None)
     audio = clean.get("audio") or {}

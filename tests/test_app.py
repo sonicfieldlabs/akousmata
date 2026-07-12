@@ -90,6 +90,58 @@ class NavigatorTests(unittest.TestCase):
         self.assertEqual(data["total"], 2)
         self.assertEqual(data["by_app"], {"oida": 1, "germ": 1})
 
+    def test_location_create_patch_and_map(self):
+        created = self.client.post("/api/records", json={
+            "summary": "river under the bridge",
+            "tags": ["river"],
+            "location": {"lat": 6.2442, "lon": -75.5812, "label": "puente de la 4 sur", "source": "gps"},
+        })
+        self.assertEqual(created.status_code, 200, created.text)
+        record = created.json()["record"]
+        self.assertEqual(record["location"]["label"], "puente de la 4 sur")
+        self.assertEqual(record["location"]["source"], "gps")
+
+        data = self.client.get("/api/map").json()
+        self.assertEqual(data["located"], 1)
+        self.assertEqual(data["unlocated"], 2)
+        self.assertEqual(data["points"][0]["akousma_id"], record["akousma_id"])
+        self.assertEqual(data["points"][0]["label"], "puente de la 4 sur")
+
+        # location is listener-annotatable: geotag an existing memory, then clear it
+        patched = self.client.patch(f"/api/records/{self.parent_id}", json={
+            "location": {"lat": 43.36, "lon": -8.41, "label": "harbor"},
+        })
+        self.assertEqual(patched.status_code, 200, patched.text)
+        self.assertEqual(patched.json()["record"]["location"]["source"], "manual")
+        self.assertEqual(self.client.get("/api/map").json()["located"], 2)
+        listed = self.client.get("/api/records").json()["records"]
+        by_id = {item["akousma_id"]: item for item in listed}
+        self.assertTrue(by_id[self.parent_id]["has_location"])
+        self.assertFalse(by_id[self.child_id]["has_location"])
+
+        cleared = self.client.patch(f"/api/records/{self.parent_id}", json={"location": {}})
+        self.assertNotIn("location", cleared.json()["record"])
+        self.assertEqual(self.client.get("/api/map").json()["located"], 1)
+
+    def test_location_patch_validates(self):
+        bad = self.client.patch(f"/api/records/{self.parent_id}", json={"location": {"lat": 123, "lon": 0}})
+        self.assertEqual(bad.status_code, 400)
+        missing = self.client.patch(f"/api/records/{self.parent_id}", json={"location": {"label": "nowhere"}})
+        self.assertEqual(missing.status_code, 400)
+
+    def test_export_strips_location(self):
+        record = self._manual_with_audio(summary="located rain", tags=("rain", "geo"))
+        self.client.patch(f"/api/records/{record['akousma_id']}", json={"location": {"lat": 6.2, "lon": -75.6}})
+        self.client.post(f"/api/records/{record['akousma_id']}/consent", json={"consent_status": "owned"})
+        result = self.client.post("/api/export", json={
+            "name": "geo pack", "akousma_ids": [record["akousma_id"]],
+            "include_audio": False, "include_wiki": False,
+        }).json()
+        jsonl = Path(result["path"]) / "records" / "records.jsonl"
+        exported = json.loads(jsonl.read_text(encoding="utf-8").strip())
+        self.assertEqual(exported["akousma_id"], record["akousma_id"])
+        self.assertNotIn("location", exported)
+
     def test_list_and_filters(self):
         self.assertEqual(len(self.client.get("/api/records").json()["records"]), 2)
         oida_only = self.client.get("/api/records", params={"app_filter": "oida"}).json()["records"]
@@ -126,7 +178,8 @@ class NavigatorTests(unittest.TestCase):
         self.assertEqual(record["provenance"]["originating_app"], "akousmata")
         self.assertEqual(record["provenance"]["source_type"], "imported")
         entry = record["listening"]["human.note"]
-        self.assertEqual(entry["contract"], "akousmata/v0.2")
+        from akousmata_app import AKOUSMATA_CONTRACT
+        self.assertEqual(entry["contract"], AKOUSMATA_CONTRACT)
         self.assertEqual(record["audio"]["duration_seconds"], 0.1)
         self.assertEqual(record["extensions"]["akousmata.app"]["listener"]["type"], "human")
         audio = self.client.get(f"/api/audio/{record['akousma_id']}")
@@ -381,7 +434,8 @@ class NavigatorTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         body = response.json()
         self.assertTrue(body["namespace"].startswith("akousmata.listen_again"))
-        self.assertEqual(body["listening"]["contract"], "akousmata/v0.2")
+        from akousmata_app import AKOUSMATA_CONTRACT
+        self.assertEqual(body["listening"]["contract"], AKOUSMATA_CONTRACT)
         self.assertEqual(body["listening"]["payload"]["source_contract"], "oida/gateway/v0.2")
         self.assertEqual(body["listening"]["payload"]["event_id"], "evt_fresh")
         self.assertEqual(body["listening"]["payload"]["claims"]["heard"][0]["statement"], "Rain is audible.")

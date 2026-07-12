@@ -84,6 +84,30 @@ def _embedding_cosine(left: list[float], right: list[float]) -> float | None:
     return sum(a * b for a, b in zip(left, right)) / (left_norm * right_norm)
 
 
+_CORPUS_CACHE: dict[str, Any] = {"key": None, "items": []}
+
+
+def _corpus(store) -> list[dict[str, Any]]:
+    """Parsed records with precomputed tokens/features/embeddings, cached per
+    process. The key changes on any write: INSERT OR REPLACE assigns a fresh
+    rowid and forget() changes the count, so edits invalidate it too."""
+    row = store.conn.execute("SELECT COUNT(*) AS n, MAX(rowid) AS r FROM akousmata").fetchone()
+    key = (row["n"], row["r"])
+    if _CORPUS_CACHE["key"] != key:
+        items = []
+        for db_row in store.conn.execute("SELECT record FROM akousmata").fetchall():
+            record = json.loads(db_row["record"])
+            items.append({
+                "record": record,
+                "tokens": _tokens(record),
+                "features": _features(record),
+                "embedding": _embedding(record),
+            })
+        _CORPUS_CACHE["key"] = key
+        _CORPUS_CACHE["items"] = items
+    return _CORPUS_CACHE["items"]
+
+
 def similar(store, akousma_id: str, *, limit: int = 10) -> list[dict[str, Any]]:
     origin = store.get(akousma_id)
     if origin is None:
@@ -95,10 +119,9 @@ def similar(store, akousma_id: str, *, limit: int = 10) -> list[dict[str, Any]]:
     origin_duration = (origin.get("audio") or {}).get("duration_seconds")
     origin_hash = (origin.get("audio") or {}).get("content_hash")
 
-    rows = store.conn.execute("SELECT record FROM akousmata").fetchall()
     scored: list[dict[str, Any]] = []
-    for row in rows:
-        record = json.loads(row["record"])
+    for item in _corpus(store):
+        record = item["record"]
         if record["akousma_id"] == akousma_id:
             continue
         score = 0.0
@@ -114,7 +137,7 @@ def similar(store, akousma_id: str, *, limit: int = 10) -> list[dict[str, Any]]:
             score += 0.45 * len(shared_tags) / max(1, len(origin_tags | tags))
             basis.append("shared tags: " + ", ".join(sorted(shared_tags)[:4]))
 
-        tokens = _tokens(record)
+        tokens = item["tokens"]
         shared_tokens = origin_tokens & tokens
         if shared_tokens and origin_tokens and tokens:
             cosine = len(shared_tokens) / math.sqrt(len(origin_tokens) * len(tokens))
@@ -129,7 +152,7 @@ def similar(store, akousma_id: str, *, limit: int = 10) -> list[dict[str, Any]]:
                 score += 0.08 * proximity
                 basis.append("similar duration")
 
-        features = _features(record)
+        features = item["features"]
         shared_keys = [k for k in origin_features if k in features]
         if len(shared_keys) >= 3:
             distances = []
@@ -142,7 +165,7 @@ def similar(store, akousma_id: str, *, limit: int = 10) -> list[dict[str, Any]]:
                 score += 0.35 * closeness
                 basis.append(f"feature closeness over {len(shared_keys)} shared measurements")
 
-        embedding = _embedding(record)
+        embedding = item["embedding"]
         if origin_embedding is not None and embedding is not None:
             cosine = _embedding_cosine(origin_embedding, embedding)
             if cosine is not None and cosine > 0.2:
