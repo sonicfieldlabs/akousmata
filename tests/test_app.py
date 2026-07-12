@@ -123,6 +123,40 @@ class NavigatorTests(unittest.TestCase):
         self.assertNotIn("location", cleared.json()["record"])
         self.assertEqual(self.client.get("/api/map").json()["located"], 1)
 
+    def test_covenant_filter_and_card(self):
+        from akousmata_app.paths import open_store, ensure_pyakousma
+
+        ensure_pyakousma()
+        import akousma
+
+        store = open_store()
+        try:
+            under = akousma.new_akousma(
+                audio={"asset_id": "cov1"},
+                originating_app="oida",
+                origin="live-input",
+                summary="talk near the river, words withheld",
+                covenant=akousma.covenant(
+                    "river-covenant/2",
+                    name="river covenant",
+                    contract="akouo/v0.7",
+                    extends=["algophonya/v7"],
+                    withheld=[{"rule": "do_not_reveal", "subject": "transcript", "count": 1}],
+                    commitments=1,
+                ),
+            )
+            store.put(under)
+        finally:
+            store.close()
+
+        listed = self.client.get("/api/records", params={"covenant": "river-covenant/2"}).json()["records"]
+        self.assertEqual([r["akousma_id"] for r in listed], [under["akousma_id"]])
+        self.assertEqual(listed[0]["covenant_id"], "river-covenant/2")
+        empty = self.client.get("/api/records", params={"covenant": "no-such-covenant"}).json()["records"]
+        self.assertEqual(empty, [])
+        detail = self.client.get(f"/api/records/{under['akousma_id']}").json()
+        self.assertEqual(detail["record"]["covenant"]["withheld"][0]["subject"], "transcript")
+
     def test_location_patch_validates(self):
         bad = self.client.patch(f"/api/records/{self.parent_id}", json={"location": {"lat": 123, "lon": 0}})
         self.assertEqual(bad.status_code, 400)

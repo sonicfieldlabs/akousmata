@@ -6,6 +6,7 @@ const state = {
   selected: null,
   tags: [],
   activeTag: "",
+  activeCovenant: "",
   wikiPages: null,
   graph: null,
   research: null,
@@ -72,12 +73,21 @@ function filterParams() {
   if ($("f-app").value) params.set("app_filter", $("f-app").value);
   if ($("f-origin").value) params.set("origin", $("f-origin").value);
   if (state.activeTag) params.set("tag", state.activeTag);
+  if (state.activeCovenant) params.set("covenant", state.activeCovenant);
   return params;
 }
 
 async function loadRecords() {
   const data = await api(`/api/records?${filterParams()}`);
   state.records = data.records;
+  const covenantChip = $("covenant-chip");
+  covenantChip.replaceChildren();
+  if (state.activeCovenant) {
+    const chip = el("span", "tagchip active", `☖ ${state.activeCovenant} ×`);
+    chip.title = "showing memories listened under this covenant — click to clear";
+    chip.addEventListener("click", () => { state.activeCovenant = ""; loadRecords(); });
+    covenantChip.append(chip);
+  }
   const list = $("rec-list");
   list.replaceChildren();
   if (!state.records.length) {
@@ -94,6 +104,11 @@ async function loadRecords() {
     if (record.origin) line2.append(el("span", "badge", record.origin));
     if (record.has_audio) line2.append(el("span", "badge", "audio"));
     if (record.has_location) line2.append(el("span", "minitag", "⌖"));
+    if (record.covenant_id) {
+      const mark = el("span", "minitag", "☖");
+      mark.title = `listened under ${record.covenant_id}`;
+      line2.append(mark);
+    }
     if (record.parent_count) line2.append(el("span", "minitag", `⭡${record.parent_count}`));
     if (record.relation_count) line2.append(el("span", "minitag", `≈${record.relation_count}`));
     for (const tag of record.tags.slice(0, 4)) line2.append(el("span", "minitag", `#${tag}`));
@@ -264,6 +279,39 @@ function renderDetail(data) {
   placeSection.append(placeEditor);
   pane.append(placeSection);
 
+  // covenant (spec v1.3 — under which ethics this was listened). Producer-owned:
+  // the navigator renders and filters by it, never edits it.
+  const cov = record.covenant && record.covenant.id ? record.covenant : null;
+  if (cov) {
+    const covSection = el("div", "section");
+    covSection.append(el("h2", "", "covenant"));
+    const head = el("div", "row");
+    head.append(el("span", "", `☖ ${cov.name || cov.id}`));
+    if (cov.version && cov.name) head.append(el("span", "note", `v${cov.version}`));
+    if (cov.contract) head.append(el("span", "badge", cov.contract));
+    const filterButton = el("button", "btn", "all under this covenant");
+    filterButton.addEventListener("click", () => {
+      state.activeCovenant = cov.id;
+      loadRecords();
+    });
+    head.append(filterButton);
+    covSection.append(head);
+    if ((cov.extends || []).length) {
+      covSection.append(el("div", "note", `stands on ${cov.extends.join(", ")}`));
+    }
+    for (const item of cov.withheld || []) {
+      covSection.append(el("div", "note",
+        `withheld: ${item.subject || "?"}${item.count != null ? ` ×${item.count}` : ""} — under ${String(item.rule || "its rules").replaceAll("_", " ")}`));
+    }
+    if ((cov.rules_applied || []).length) {
+      covSection.append(el("div", "note", `rules applied: ${cov.rules_applied.join(" · ")}`));
+    }
+    if (cov.commitments) {
+      covSection.append(el("div", "note", `${cov.commitments} commitment${cov.commitments === 1 ? "" : "s"} carried with the covenant`));
+    }
+    pane.append(covSection);
+  }
+
   // listenings
   const listening = record.listening || {};
   if (Object.keys(listening).length) {
@@ -294,7 +342,7 @@ function renderDetail(data) {
   // preserves them; showing them keeps the record honest about what it holds)
   const KNOWN_TOP = new Set([
     "akousma_id", "schema_version", "created_at", "session_id", "audio", "provenance",
-    "listening", "lineage", "tags", "annotations", "extensions", "summary", "location", "capture",
+    "listening", "lineage", "tags", "annotations", "extensions", "summary", "location", "capture", "covenant",
   ]);
   const extraKeys = Object.keys(record).filter((key) => !KNOWN_TOP.has(key)).sort();
   if (extraKeys.length) {

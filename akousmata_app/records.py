@@ -48,8 +48,13 @@ def list_records(
     text: str | None = None,
     since: str | None = None,
     until: str | None = None,
+    covenant_id: str | None = None,
     limit: int = 200,
 ) -> list[dict[str, Any]]:
+    kwargs: dict[str, Any] = {}
+    if covenant_id is not None:
+        # py-akousma >= 0.4; older stores simply have no covenant column
+        kwargs["covenant_id"] = covenant_id
     return store.query(
         originating_app=app,
         origin=origin,
@@ -59,6 +64,7 @@ def list_records(
         since=since,
         until=until,
         limit=limit,
+        **kwargs,
     )
 
 
@@ -99,6 +105,7 @@ def card(record: dict[str, Any]) -> dict[str, Any]:
         "duration_seconds": audio.get("duration_seconds"),
         "has_audio": bool(audio.get("uri")),
         "has_location": isinstance((record.get("location") or {}).get("lat"), (int, float)),
+        "covenant_id": (record.get("covenant") or {}).get("id"),
         "parent_count": len(lineage.get("parent_akousma_ids") or []),
         "relation_count": len(lineage.get("relations") or []),
         "listener_kinds": sorted({ns.split(".")[0] for ns in (record.get("listening") or {})}),

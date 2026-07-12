@@ -43,6 +43,12 @@ models and runs no agents** — it is the quiet room of the Listening Stack:
 - **Consent and export** — an audit of consent, rights notes, and capture
   conditions; restricted or unknown records are blocked from sanitized,
   manifest-bearing research packs.
+- **Covenants (spec v1.3)** — records made under a listening covenant say so:
+  the detail pane shows under which ethics a sound was listened (the
+  covenant's identity and lineage, the rules that acted, what was withheld —
+  counted and attributed, never described — and the commitments it carries),
+  and one click filters the library to everything heard under that covenant.
+  The navigator displays sovereignty; it never edits it.
 - **Listen again** — a record with resolvable audio can make a fresh pass
   through the Oída gateway; the new claims, routes, apparatus, and summary are
   filed as another listening entry on the same akousma.

@@ -130,6 +130,7 @@ def list_records(
     text: str | None = None,
     since: str | None = None,
     until: str | None = None,
+    covenant: str | None = None,
     limit: int = 200,
 ) -> dict[str, Any]:
     store = _store()
@@ -143,6 +144,7 @@ def list_records(
             text=text,
             since=since,
             until=until,
+            covenant_id=covenant,
             limit=max(1, min(limit, 1000)),
         )
         return {"records": [records.card(r) for r in found]}

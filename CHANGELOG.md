@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.4.0 — Under Which Ethics
+
+- **Covenant rendering (spec v1.3)**: records made under a listening covenant
+  (AKOÚŌ v0.7's sovereignty layer) show it in a new detail section — the
+  covenant's name, contract, lineage (`extends`), the rules that acted, what
+  was withheld (counted and attributed to its rule, never described), and how
+  many commitments the covenant carries. The block is producer-owned: the
+  navigator renders and filters by it, never edits it.
+- **Covenant filtering**: `GET /api/records?covenant=<id>` and a library
+  filter chip — "everything listened under this covenant" is one click from
+  any record; cards carry `covenant_id` and a ☖ marker.
+- Withholding is displayed as honest absence, kept visually distinct from
+  `undetermined`; unknown top-level fields continue to render in "more
+  details" (the covenant block itself is now a known field).
+- Exports: the covenant block travels — it contains identity, counts, and
+  rule names by construction, never withheld content or the covenant's text.
+- Contract `akousmata/v0.4`; store floor raised to `py-akousma >= 0.4.0`;
+  29 hermetic tests.
+
 ## 0.3.0 — The Listening Map
 
 - **Map view**: a hand-rolled Web-Mercator canvas (no map library) plotting
