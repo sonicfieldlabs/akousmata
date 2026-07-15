@@ -11,15 +11,15 @@ import asyncio
 import json
 import time
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 from urllib.parse import urlencode
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from akousmata_app import AKOUSMATA_CONTRACT, __version__, constellations, exports, graph, records, research, similar, watcher, wiki
 from akousmata_app.llm import validate_http_url
@@ -51,13 +51,14 @@ app = FastAPI(title="akousmata", version=__version__, lifespan=lifespan)
 
 
 class ManualMemory(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     summary: str
     notes: str = ""
     tags: list[str] = Field(default_factory=list)
     heard_at: str | None = None
     place: str | None = None
     kind: str = "heard_live"
-    audio_path: str | None = None
     parent_akousma_ids: list[str] = Field(default_factory=list)
     relations: list[dict[str, Any]] = Field(default_factory=list)
     location: dict[str, Any] | None = None
@@ -155,6 +156,15 @@ def list_records(
 
 @app.post("/api/records")
 def create_record(body: ManualMemory) -> dict[str, Any]:
+    return _create_manual_record(body)
+
+
+def _create_manual_record(
+    body: ManualMemory,
+    *,
+    audio_data: bytes | None = None,
+    audio_extension: str = "wav",
+) -> dict[str, Any]:
     if not body.summary.strip():
         raise HTTPException(status_code=400, detail="summary is required")
     store = _store()
@@ -168,19 +178,46 @@ def create_record(body: ManualMemory) -> dict[str, Any]:
                 heard_at=body.heard_at,
                 place=body.place,
                 kind=body.kind,
-                audio_path=body.audio_path,
+                audio_data=audio_data,
+                audio_extension=audio_extension,
                 parent_akousma_ids=body.parent_akousma_ids,
                 relations=body.relations,
                 location=body.location,
             )
-        except FileNotFoundError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         wiki.ingest(store, record["akousma_id"])
         return {"record": record}
     finally:
         store.close()
+
+
+@app.post("/api/records/import")
+async def import_record(
+    metadata: Annotated[str, Form()],
+    audio: Annotated[UploadFile, File()],
+) -> dict[str, Any]:
+    try:
+        body = ManualMemory.model_validate_json(metadata)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail="invalid manual-memory metadata") from exc
+    filename = audio.filename or ""
+    _, separator, extension = filename.rpartition(".")
+    if not separator:
+        await audio.close()
+        raise HTTPException(status_code=400, detail="audio filename needs a supported extension")
+    try:
+        extension = records.normalize_audio_extension(extension)
+    except ValueError as exc:
+        await audio.close()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    try:
+        data = await audio.read(records.MAX_MANUAL_AUDIO_BYTES + 1)
+    finally:
+        await audio.close()
+    if len(data) > records.MAX_MANUAL_AUDIO_BYTES:
+        raise HTTPException(status_code=413, detail="uploaded audio is larger than 100 MB")
+    return _create_manual_record(body, audio_data=data, audio_extension=extension)
 
 
 @app.get("/api/records/{akousma_id}")
@@ -578,7 +615,10 @@ def diary_day(day: str) -> dict[str, Any]:
     if page is None:
         store = _store()
         try:
-            page = wiki.diary_digest(store, day)
+            try:
+                page = wiki.diary_digest(store, day)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="day must use YYYY-MM-DD") from exc
         finally:
             store.close()
     return {"day": day, "markdown": page}

@@ -8,6 +8,7 @@ license = { text = "MIT" }
 dependencies = [
     "akousma>=0.4.0",
     "fastapi>=0.139",
+    "python-multipart>=0.0.32",
     "uvicorn>=0.29",
 ]
 

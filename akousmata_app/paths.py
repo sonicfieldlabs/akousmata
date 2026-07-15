@@ -7,10 +7,25 @@ navigator source is public.
 from __future__ import annotations
 
 import os
+import re
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+_SAFE_COMPONENT_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
+
+
+def safe_component(value: str, *, label: str = "identifier") -> str:
+    """Return a single portable filename component or reject it.
+
+    Record ids and wiki page names cross API/store boundaries before becoming
+    filenames. Keeping this validation in one place prevents separators,
+    traversal components, control characters, and unbounded names from ever
+    reaching a filesystem operation.
+    """
+    if not isinstance(value, str) or _SAFE_COMPONENT_RE.fullmatch(value) is None:
+        raise ValueError(f"invalid {label}")
+    return value
 
 
 def store_root() -> Path:

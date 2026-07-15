@@ -79,9 +79,12 @@ class NavigatorTests(unittest.TestCase):
                 handle.setsampwidth(2)
                 handle.setframerate(16000)
                 handle.writeframes(b"\x00\x00" * 1600)
-        response = self.client.post("/api/records", json={
-            "summary": summary, "tags": list(tags), "kind": "file", "audio_path": str(source),
-        })
+        metadata = {"summary": summary, "tags": list(tags), "kind": "file"}
+        response = self.client.post(
+            "/api/records/import",
+            data={"metadata": json.dumps(metadata)},
+            files={"audio": ("clip.wav", source.read_bytes(), "audio/wav")},
+        )
         self.assertEqual(response.status_code, 200, response.text)
         return response.json()["record"]
 
@@ -200,13 +203,17 @@ class NavigatorTests(unittest.TestCase):
             handle.setsampwidth(2)
             handle.setframerate(16000)
             handle.writeframes(b"\x00\x00" * 1600)
-        response = self.client.post("/api/records", json={
+        metadata = {
             "summary": "rain on the skylight",
             "notes": "sharp, granular, almost synthetic",
             "tags": ["rain", "home"],
             "kind": "file",
-            "audio_path": str(source),
-        })
+        }
+        response = self.client.post(
+            "/api/records/import",
+            data={"metadata": json.dumps(metadata)},
+            files={"audio": ("clip.wav", source.read_bytes(), "audio/wav")},
+        )
         self.assertEqual(response.status_code, 200, response.text)
         record = response.json()["record"]
         self.assertEqual(record["provenance"]["originating_app"], "akousmata")
@@ -222,10 +229,22 @@ class NavigatorTests(unittest.TestCase):
         page = self.client.get(f"/api/wiki/page/record/{record['akousma_id']}").json()
         self.assertIn("rain on the skylight", page["markdown"])
 
-    def test_manual_memory_requires_summary_and_audio_path_exists(self):
+    def test_manual_memory_validates_summary_and_audio_upload(self):
         self.assertEqual(self.client.post("/api/records", json={"summary": "  "}).status_code, 400)
-        response = self.client.post("/api/records", json={"summary": "x", "audio_path": "/nope/missing.wav"})
-        self.assertEqual(response.status_code, 400)
+        legacy = self.client.post("/api/records", json={"summary": "x", "audio_path": "/nope/missing.wav"})
+        self.assertEqual(legacy.status_code, 422)
+        unsupported = self.client.post(
+            "/api/records/import",
+            data={"metadata": json.dumps({"summary": "x", "kind": "file"})},
+            files={"audio": ("clip.txt", b"not audio", "text/plain")},
+        )
+        self.assertEqual(unsupported.status_code, 400)
+        empty = self.client.post(
+            "/api/records/import",
+            data={"metadata": json.dumps({"summary": "x", "kind": "file"})},
+            files={"audio": ("clip.wav", b"", "audio/wav")},
+        )
+        self.assertEqual(empty.status_code, 400)
 
     def test_edit_guarded_fields(self):
         response = self.client.patch(f"/api/records/{self.parent_id}", json={"tags": ["harbor", "series"], "summary": "harbor, first take"})
@@ -371,6 +390,7 @@ class NavigatorTests(unittest.TestCase):
         self.assertIn("rain over the patio", page["markdown"])
         self.assertIn(posted["day"], self.client.get("/api/wiki").json()["pages"]["diary"])
         self.assertEqual(self.client.post("/api/diary", json={"text": "  "}).status_code, 400)
+        self.assertEqual(self.client.get("/api/diary/not-a-date").status_code, 400)
 
     def test_consent_audit_and_set(self):
         audit = self.client.get("/api/audit/consent").json()
@@ -419,11 +439,27 @@ class NavigatorTests(unittest.TestCase):
         serialized = _json.dumps(shipped)
         self.assertNotIn("/private/example/", serialized)
         self.assertNotIn("do-not-export", serialized)
-        wiki_page = (pack_root / "wiki" / f"{self.parent_id}.md").read_text()
+        manifest = _json.loads((pack_root / "manifest.json").read_text())
+        wiki_entry = next(item for item in manifest["files"] if item["kind"] == "wiki")
+        wiki_page = (pack_root / wiki_entry["path"]).read_text()
         self.assertNotIn("private field note", wiki_page)
         packs = self.client.get("/api/exports").json()["packs"]
         self.assertEqual(packs[0]["included"], 1)
         self.assertEqual(self.client.post("/api/export", json={"name": "empty"}).status_code, 400)
+
+    def test_exported_audio_uses_a_pack_relative_uri(self):
+        record = self._manual_with_audio(summary="packable rain")
+        record_id = record["akousma_id"]
+        self.client.post(f"/api/records/{record_id}/consent", json={"consent_status": "owned"})
+        result = self.client.post(
+            "/api/export",
+            json={"name": "audio pack", "akousma_ids": [record_id]},
+        ).json()
+        pack_root = Path(result["path"])
+        manifest = json.loads((pack_root / "manifest.json").read_text())
+        audio_entry = next(item for item in manifest["files"] if item["kind"] == "audio")
+        shipped = json.loads((pack_root / "records" / "records.jsonl").read_text())
+        self.assertEqual(shipped["audio"]["uri"], f"pack://{audio_entry['path']}")
 
     def test_listen_again_requires_audio_and_reachable_oida(self):
         # no resolvable audio → 409

@@ -11,16 +11,16 @@ from __future__ import annotations
 
 import json
 import re
+import secrets
 import shutil
 import time
 from typing import Any
 
 from akousmata_app import __version__
-from akousmata_app.paths import store_root, wiki_root
-from akousmata_app.records import resolve_audio_path, summary_line
+from akousmata_app.paths import store_root
+from akousmata_app.records import AUDIO_EXTENSIONS, resolve_audio_path, summary_line
 
 EXPORTABLE_CONSENT = {"owned", "licensed", "public_domain"}
-_SLUG_RE = re.compile(r"[^a-z0-9]+")
 _LOCAL_PATH_RE = re.compile(
     r"(?:file://)?/(?:Users|home|private|tmp|var/folders|Volumes)/[^\s\"'`]+"
 )
@@ -85,9 +85,10 @@ def build_pack(
     include_wiki: bool = True,
 ) -> dict[str, Any]:
     name = name.strip() or "export"
-    slug = _SLUG_RE.sub("-", name.lower()).strip("-") or "export"
     stamp = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
-    root = store_root() / "exports" / f"{slug}-{stamp}"
+    # The display name belongs in the manifest, not in a filesystem path. A
+    # random suffix also prevents two exports in the same second from colliding.
+    root = store_root() / "exports" / f"pack-{stamp}-{secrets.token_hex(4)}"
     (root / "records").mkdir(parents=True, exist_ok=True)
 
     included: list[str] = []
@@ -95,7 +96,7 @@ def build_pack(
     lines: list[str] = []
     files: list[dict[str, Any]] = []
 
-    for akousma_id in dict.fromkeys(akousma_ids):
+    for position, akousma_id in enumerate(dict.fromkeys(akousma_ids), start=1):
         record = store.get(akousma_id)
         if record is None:
             excluded.append({"akousma_id": akousma_id, "reason": "record not found (forgotten or never existed)"})
@@ -110,24 +111,26 @@ def build_pack(
             if audio_path is not None:
                 audio_dir = root / "audio"
                 audio_dir.mkdir(exist_ok=True)
-                audio_name = f"{akousma_id}{audio_path.suffix or '.wav'}"
+                suffix = audio_path.suffix.lower().lstrip(".")
+                suffix = suffix if suffix in AUDIO_EXTENSIONS else "wav"
+                audio_name = f"record-{position:04d}.{suffix}"
                 target = audio_dir / audio_name
                 shutil.copyfile(audio_path, target)
+                clean["audio"]["uri"] = f"pack://audio/{audio_name}"
                 files.append({"kind": "audio", "akousma_id": akousma_id, "path": f"audio/{audio_name}", "bytes": target.stat().st_size})
 
         lines.append(json.dumps(clean, ensure_ascii=False))
         included.append(akousma_id)
 
         if include_wiki:
-            page = wiki_root() / "records" / f"{akousma_id}.md"
-            if page.exists():
-                from akousmata_app import wiki
+            from akousmata_app import wiki
 
-                wiki_dir = root / "wiki"
-                wiki_dir.mkdir(exist_ok=True)
-                target = wiki_dir / page.name
-                target.write_text(wiki.record_page(store, clean), encoding="utf-8")
-                files.append({"kind": "wiki", "akousma_id": akousma_id, "path": f"wiki/{page.name}", "bytes": target.stat().st_size})
+            wiki_dir = root / "wiki"
+            wiki_dir.mkdir(exist_ok=True)
+            wiki_name = f"record-{position:04d}.md"
+            target = wiki_dir / wiki_name
+            target.write_text(wiki.record_page(store, clean), encoding="utf-8")
+            files.append({"kind": "wiki", "akousma_id": akousma_id, "path": f"wiki/{wiki_name}", "bytes": target.stat().st_size})
 
     (root / "records" / "records.jsonl").write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
     manifest = {

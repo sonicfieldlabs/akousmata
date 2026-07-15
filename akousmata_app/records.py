@@ -7,6 +7,7 @@ Listening Stack follows.
 """
 from __future__ import annotations
 
+import io
 import time
 import wave
 from hashlib import sha256
@@ -17,6 +18,8 @@ from akousmata_app import AKOUSMATA_CONTRACT
 from akousmata_app.paths import ensure_pyakousma
 
 EDITABLE_FIELDS = {"tags", "annotations", "summary", "location"}
+AUDIO_EXTENSIONS = {"aif", "aiff", "flac", "m4a", "mp3", "ogg", "opus", "wav", "webm"}
+MAX_MANUAL_AUDIO_BYTES = 100 * 1024 * 1024
 
 # Meteorological convention, not an ecological claim (see /api/timeline docs).
 _SEASON_BY_MONTH = {
@@ -160,14 +163,21 @@ def resolve_audio_path(store, record: dict[str, Any]) -> Path | None:
     return None
 
 
-def _wav_duration(path: Path) -> float | None:
+def _wav_bytes_duration(data: bytes) -> float | None:
     try:
-        with wave.open(str(path), "rb") as handle:
+        with wave.open(io.BytesIO(data), "rb") as handle:
             frames = handle.getnframes()
             rate = handle.getframerate()
             return round(frames / float(rate), 3) if rate else None
-    except Exception:
+    except (EOFError, wave.Error):
         return None
+
+
+def normalize_audio_extension(value: str) -> str:
+    extension = value.lower().lstrip(".")
+    if extension not in AUDIO_EXTENSIONS:
+        raise ValueError("unsupported audio file type")
+    return extension
 
 
 def _checked_location(value: dict[str, Any]) -> dict[str, Any]:
@@ -197,7 +207,8 @@ def create_manual_memory(
     heard_at: str | None = None,
     place: str | None = None,
     kind: str = "heard_live",
-    audio_path: str | None = None,
+    audio_data: bytes | None = None,
+    audio_extension: str = "wav",
     parent_akousma_ids: list[str] | None = None,
     relations: list[dict[str, Any]] | None = None,
     location: dict[str, Any] | None = None,
@@ -208,15 +219,16 @@ def create_manual_memory(
     audio: dict[str, Any] = {"asset_id": f"manual_{lib.new_id('man')[4:]}"}
     origin = "unknown"
     source_type = "recorded"
-    if audio_path:
-        source = Path(audio_path).expanduser()
-        if not source.exists():
-            raise FileNotFoundError(f"audio file not found: {audio_path}")
-        data = source.read_bytes()
-        ext = source.suffix.lstrip(".") or "wav"
+    if audio_data is not None:
+        if not audio_data:
+            raise ValueError("uploaded audio is empty")
+        if len(audio_data) > MAX_MANUAL_AUDIO_BYTES:
+            raise ValueError("uploaded audio is larger than 100 MB")
+        data = audio_data
+        ext = normalize_audio_extension(audio_extension)
         audio["uri"] = store.put_audio(data, ext=ext)
         audio["content_hash"] = "sha256:" + sha256(data).hexdigest()
-        duration = _wav_duration(source) if ext.lower() == "wav" else None
+        duration = _wav_bytes_duration(data) if ext == "wav" else None
         if duration:
             audio["duration_seconds"] = duration
         origin = "file"

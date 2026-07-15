@@ -4,7 +4,8 @@ Local endpoints (default http://127.0.0.1:5180, env `AKOUSMATA_PORT`/`AKOUSMATA_
 
 - `GET /api/health` — store path, totals by app/origin, latest timestamp.
 - `GET /api/records` — filters: `app_filter`, `origin`, `source_type`, `tag`, `text`, `since`, `until`, `covenant` (spec v1.3: everything listened under one covenant id), `limit`. Returns compact cards (incl. `covenant_id`).
-- `POST /api/records` — manual memory: `{summary, notes?, tags?, place?, heard_at?, kind, audio_path?, parent_akousma_ids?, relations?, location?}`. `location` is spec-v1.2 `{lat, lon, accuracy_m?, altitude_m?, label?, source?, captured_at?}`; `place` doubles as its label when none is given.
+- `POST /api/records` — manual memory without audio: `{summary, notes?, tags?, place?, heard_at?, kind, parent_akousma_ids?, relations?, location?}`. `location` is spec-v1.2 `{lat, lon, accuracy_m?, altitude_m?, label?, source?, captured_at?}`; `place` doubles as its label when none is given.
+- `POST /api/records/import` — the same manual-memory object as JSON in multipart field `metadata`, plus an `audio` file (100 MB maximum). The server copies bytes into the content-addressed store; it never accepts a server-side filesystem path.
 - `GET /api/records/{id}` — full record + parents/children/kinship + audio availability. Unknown top-level fields (spec v1.2 open records) come through verbatim and render in the UI's "more details" section.
 - `PATCH /api/records/{id}` — guarded edit: `tags`, `annotations`, `summary`, `location` only (`location: {}` clears; location is listener-annotatable per spec v1.2).
 - `POST /api/records/{id}/relations` / `DELETE …/relations?type=&target_akousma_id=` — typed kinship.

@@ -44,6 +44,16 @@ async function api(path, options = {}) {
   return response.json();
 }
 
+async function apiForm(path, form) {
+  const response = await fetch(appPath(path), { method: "POST", body: form });
+  if (!response.ok) {
+    let detail = response.statusText;
+    try { detail = (await response.json()).detail || detail; } catch {}
+    throw new Error(detail);
+  }
+  return response.json();
+}
+
 /* ── tabs ─────────────────────────────────────────────────────────────── */
 
 const TABS = ["library", "constellations", "timeline", "graph", "map", "wiki", "diary", "research", "audit", "settings"];
@@ -593,6 +603,7 @@ $("m-locate").addEventListener("click", () => {
 });
 
 $("m-save").addEventListener("click", async () => {
+  const audioFile = $("m-audio").files[0] || null;
   const body = {
     summary: $("m-summary").value.trim(),
     notes: $("m-notes").value.trim(),
@@ -600,7 +611,6 @@ $("m-save").addEventListener("click", async () => {
     place: $("m-place").value.trim() || null,
     heard_at: $("m-heard").value.trim() || null,
     kind: $("m-kind").value,
-    audio_path: $("m-audio").value.trim() || null,
   };
   const lat = parseFloat($("m-lat").value);
   const lon = parseFloat($("m-lon").value);
@@ -609,7 +619,15 @@ $("m-save").addEventListener("click", async () => {
     if (manualGeo.accuracy_m) body.location.accuracy_m = manualGeo.accuracy_m;
   }
   try {
-    const data = await api("/api/records", { method: "POST", body: JSON.stringify(body) });
+    let data;
+    if (audioFile) {
+      const form = new FormData();
+      form.append("metadata", JSON.stringify(body));
+      form.append("audio", audioFile, audioFile.name);
+      data = await apiForm("/api/records/import", form);
+    } else {
+      data = await api("/api/records", { method: "POST", body: JSON.stringify(body) });
+    }
     $("m-status").textContent = "";
     $("add-form").hidden = true;
     for (const id of ["m-summary", "m-notes", "m-tags", "m-place", "m-heard", "m-audio", "m-lat", "m-lon"]) $(id).value = "";
@@ -815,10 +833,10 @@ async function loadDiary() {
 
 async function openDiaryDay(day) {
   try {
-    const data = await api(`/api/diary/${day}`);
+    const data = await api(`/api/diary/${encodeURIComponent(day)}`);
     $("d-digest").innerHTML = renderMarkdown(data.markdown);
   } catch (error) {
-    $("d-digest").innerHTML = `<p class="note">${error.message}</p>`;
+    $("d-digest").replaceChildren(el("p", "note", error.message));
   }
 }
 
@@ -1335,7 +1353,12 @@ function clickMap(event) {
 /* ── wiki ─────────────────────────────────────────────────────────────── */
 
 function renderMarkdown(markdown) {
-  const escape = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const escape = (s) => s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
   let html = "";
   let inCode = false;
   let inList = false;
@@ -1392,7 +1415,7 @@ async function openWikiPage(kind, name) {
     const data = await api(`/api/wiki/page/${kind}/${encodeURIComponent(name)}`);
     $("wiki-body").innerHTML = renderMarkdown(data.markdown);
   } catch (error) {
-    $("wiki-body").innerHTML = `<p class="note">no ${kind} page for ${name} yet — ${error.message}</p>`;
+    $("wiki-body").replaceChildren(el("p", "note", "no " + kind + " page for " + name + " yet — " + error.message));
   }
 }
 

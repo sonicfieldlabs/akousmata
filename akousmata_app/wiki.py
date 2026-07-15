@@ -22,10 +22,11 @@ from __future__ import annotations
 import json
 import re
 import time
+from datetime import date
 from pathlib import Path
 from typing import Any
 
-from akousmata_app.paths import wiki_root
+from akousmata_app.paths import safe_component, wiki_root
 from akousmata_app.records import summary_line
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
@@ -180,9 +181,10 @@ def ingest(store, akousma_id: str) -> dict[str, Any]:
     record = store.get(akousma_id)
     if record is None:
         raise KeyError(f"akousma not found: {akousma_id}")
+    record_id = safe_component(str(record["akousma_id"]), label="akousma id")
     dirs = _dirs()
     touched = []
-    page = dirs["records"] / f"{akousma_id}.md"
+    page = dirs["records"] / f"{record_id}.md"
     page.write_text(record_page(store, record), encoding="utf-8")
     touched.append(str(page.relative_to(dirs["root"])))
     for tag in record.get("tags") or []:
@@ -191,8 +193,8 @@ def ingest(store, akousma_id: str) -> dict[str, Any]:
         touched.append(str(path.relative_to(dirs["root"])))
     (dirs["root"] / "index.md").write_text(build_index(store), encoding="utf-8")
     touched.append("index.md")
-    log_append("ingest", akousma_id, f"{len(touched)} pages touched")
-    return {"akousma_id": akousma_id, "touched": touched}
+    log_append("ingest", record_id, f"{len(touched)} pages touched")
+    return {"akousma_id": record_id, "touched": touched}
 
 
 def rebuild(store) -> dict[str, Any]:
@@ -204,8 +206,9 @@ def rebuild(store) -> dict[str, Any]:
     records = [json.loads(r["record"]) for r in rows]
     known_ids = set()
     for record in records:
-        known_ids.add(record["akousma_id"])
-        (dirs["records"] / f"{record['akousma_id']}.md").write_text(record_page(store, record), encoding="utf-8")
+        record_id = safe_component(str(record["akousma_id"]), label="akousma id")
+        known_ids.add(record_id)
+        (dirs["records"] / f"{record_id}.md").write_text(record_page(store, record), encoding="utf-8")
     tags = store.tags() if hasattr(store, "tags") else []
     known_tags = set()
     for item in tags:
@@ -270,7 +273,11 @@ def read_page(kind: str, name: str) -> str | None:
     }.get(kind)
     if folder is None:
         return None
-    path = folder / f"{name}.md"
+    try:
+        page_name = safe_component(name, label="wiki page name")
+    except ValueError:
+        return None
+    path = folder / f"{page_name}.md"
     return path.read_text(encoding="utf-8") if path.exists() else None
 
 
@@ -285,6 +292,7 @@ def write_topic(slug: str, markdown: str) -> str:
 def diary_digest(store, day: str) -> str:
     """One day's page: diary entries first, then everything else the library
     gained that day — the listening diary as a maintained wiki layer."""
+    day = date.fromisoformat(day).isoformat()
     dirs = _dirs()
     records = store.query(since=f"{day}T00:00:00Z", until=f"{day}T23:59:59Z", limit=500)
     diary_entries = []
