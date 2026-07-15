@@ -12,8 +12,19 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: akousmata
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Akousmata
+        uses: actions/checkout@v4
+        with:
+          path: akousmata
+      - name: Checkout Earworm
+        uses: actions/checkout@v4
+        with:
+          repository: sonicfieldlabs/earworm
+          path: earworm
       - uses: astral-sh/setup-uv@v5
       - run: uv sync --extra dev
       - run: uv run pytest -q
