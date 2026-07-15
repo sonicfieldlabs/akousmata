@@ -437,6 +437,13 @@ class NavigatorTests(unittest.TestCase):
         self.assertEqual(response.status_code, 502)
         self.assertIn("oída", response.json()["detail"])
 
+        # Non-network URL schemes are rejected before urllib can open them.
+        self.client.put("/api/settings", json={"oida_url": "file:///etc/passwd"})
+        with patch("urllib.request.urlopen") as urlopen:
+            response = self.client.post(f"/api/records/{record['akousma_id']}/listen-again", json={})
+        self.assertEqual(response.status_code, 422)
+        urlopen.assert_not_called()
+
     def test_listen_again_files_gateway_result_on_same_record(self):
         record = self._manual_with_audio()
         gateway = {

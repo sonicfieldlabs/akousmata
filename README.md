@@ -68,7 +68,9 @@ models and runs no agents** — it is the quiet room of the Listening Stack:
 - **BYOK LLM** — optional: any OpenAI-compatible endpoint (OpenAI, xAI/Grok,
   OpenRouter, Ollama, llama.cpp), Anthropic, or a **local CLI agent**
   (codex, opencode — the prompt goes to stdin, nothing leaves your machine).
-  Keys live in your local `settings.json`, never in the repo.
+  Keys live in your local `settings.json`, never in the repo. CLI commands are
+  parsed as an executable and arguments; use a wrapper script if you need shell
+  pipelines or redirection.
 - **Germ handoff** — send any memory into germ as sound, prompt, or lineage
   (the same three buttons oída uses), turning listened things into sounding
   things.

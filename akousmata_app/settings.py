@@ -22,8 +22,8 @@ DEFAULTS: dict[str, Any] = {
         "base_url": "",
         "model": "",
         "api_key": "",
-        # cli: a local agent command that reads the prompt on stdin and
-        # prints the answer (e.g. `codex exec -`, `opencode run`).
+        # cli: a local executable plus arguments that reads the prompt on stdin
+        # and prints the answer (e.g. `codex exec -`, `opencode run`).
         "command": "",
     },
     "watcher": {

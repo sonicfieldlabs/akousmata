@@ -22,6 +22,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from akousmata_app import AKOUSMATA_CONTRACT, __version__, constellations, exports, graph, records, research, similar, watcher, wiki
+from akousmata_app.llm import validate_http_url
 from akousmata_app.paths import open_store, store_root
 from akousmata_app.settings import load as load_settings
 from akousmata_app.settings import public_view, save as save_settings
@@ -676,7 +677,13 @@ def listen_again(akousma_id: str, body: ListenAgainBody) -> dict[str, Any]:
         path = records.resolve_audio_path(store, record)
         if path is None:
             raise HTTPException(status_code=409, detail="this memory has no resolvable audio to listen to again")
-        oida_url = str(load_settings().get("oida_url") or "http://127.0.0.1:8765").rstrip("/")
+        try:
+            oida_url = validate_http_url(
+                str(load_settings().get("oida_url") or "http://127.0.0.1:8765"),
+                label="oída URL",
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
         request = urllib.request.Request(
             f"{oida_url}/gateway/listen",
             data=_json.dumps({"path": str(path), "route_preset": body.preset, "remember": False}).encode("utf-8"),
@@ -684,7 +691,8 @@ def listen_again(akousma_id: str, body: ListenAgainBody) -> dict[str, Any]:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(request, timeout=240) as response:
+            # validate_http_url() excludes urllib's local-file and custom schemes.
+            with urllib.request.urlopen(request, timeout=240) as response:  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
                 gateway_result = _json.loads(response.read().decode("utf-8"))
         except Exception as exc:  # noqa: BLE001 — any transport failure reads the same to the user
             raise HTTPException(status_code=502, detail=f"oída did not answer at {oida_url}: {exc}") from exc
