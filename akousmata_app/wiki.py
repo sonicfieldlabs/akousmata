@@ -9,8 +9,8 @@ Three layers, after Karpathy's llm-wiki gist:
   plus `index.md` (catalog with one-line summaries) and `log.md`
   (append-only operations journal). Pages regenerate deterministically from
   the store; LLM expansions are additive sections, clearly marked.
-- **Schema layer**: `AGENTS.md` in this repository — conventions that turn
-  any attached agent into a disciplined wiki maintainer.
+- **Schema layer**: `docs/wiki-conventions.md` in this repository — public
+  conventions for layout, operations, and producer discipline.
 
 Operations: **ingest** (a record arrives → its page, tag pages, and index
 update; a log line is appended), **query** (research sessions file their

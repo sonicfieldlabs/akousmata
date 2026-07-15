@@ -14,7 +14,7 @@ addressed.
 | --- | --- |
 | **Raw sources** (immutable documents) | **Akousma records + audio objects.** Producers own them (oída, germ, algophony, human entries). The wiki reads, never rewrites: producer discipline is the immutability. |
 | **Wiki layer** (agent-maintained markdown) | `<store>/wiki/`: one page per record, per tag, plus **topic pages** (research syntheses) — with `index.md` as the catalog and `log.md` as the append-only journal. Record/tag pages are deterministic derivations and regenerate; topic pages are synthesis and persist. |
-| **Schema layer** (conventions file) | `AGENTS.md` in this repository: layout, wikilink forms, operations, producer discipline. Any attached agent becomes a disciplined maintainer by reading it. |
+| **Schema layer** (conventions file) | [`docs/wiki-conventions.md`](wiki-conventions.md): layout, wikilink forms, operations, and producer discipline. |
 
 ## The three operations
 
@@ -43,7 +43,7 @@ addressed.
   maintains. The Memex quality — connections as valuable as documents — is
   native here.
 - **Grounding is enforced by contract.** Listening entries carry their
-  contract pins (`akouo/v0.6`, `akousmata/v0.2`, `oida/gateway/v0.2`); claims carry sources and
+  contract pins (`akouo/v0.7`, `akousmata/v0.4`, `oida/gateway/v0.2`); claims carry sources and
   time anchors upstream. The wiki inherits the stack's epistemic discipline
   instead of hoping for it.
 - **The navigator is also for humans without any LLM.** Library, graph,

@@ -1,5 +1,4 @@
-# ── The store DATA lives beside the app code and is NEVER tracked. ──
-# Personal listening memory: records, audio objects, wiki layer, settings.
+# Never track personal listening memory if AKOUSMATA_PATH targets this checkout.
 index.sqlite
 index.sqlite-*
 objects/

@@ -395,7 +395,7 @@ class NavigatorTests(unittest.TestCase):
         parent = store.get(self.parent_id)
         parent["annotations"] = {"private": "private field note"}
         parent.setdefault("extensions", {})["test.export"] = {
-            "source_path": "$HOME/private/harbor.wav",
+            "source_path": "/private/example/harbor.wav",
             "api_key": "do-not-export",
         }
         store.put(parent)
@@ -417,7 +417,7 @@ class NavigatorTests(unittest.TestCase):
         self.assertNotIn("annotations", shipped)
         self.assertNotIn("akousmata.app", shipped.get("extensions") or {})
         serialized = _json.dumps(shipped)
-        self.assertNotIn("/U[s]ers/", serialized)
+        self.assertNotIn("/private/example/", serialized)
         self.assertNotIn("do-not-export", serialized)
         wiki_page = (pack_root / "wiki" / f"{self.parent_id}.md").read_text()
         self.assertNotIn("private field note", wiki_page)

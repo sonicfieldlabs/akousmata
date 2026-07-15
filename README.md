@@ -13,6 +13,8 @@ Every memory carries provenance, structured listenings, causal lineage
 ("made from") and typed kinship ("belongs with"): variants, recurrences,
 series, responses.
 
+Current release: `0.4.0`.
+
 ## What it is
 
 A local-first library app over the shared akousmata store. It loads **no
@@ -56,7 +58,9 @@ models and runs no agents** — it is the quiet room of the Listening Stack:
   sonic memories: a maintained markdown layer over the records with one page
   per memory, per tag, plus topic syntheses; `index.md` catalog, `log.md`
   journal, and a lint pass for drift (dangling links, orphan pages, store
-  integrity). Deterministic by default; see `docs/concept.md`.
+  integrity). Deterministic by default; see
+  [`docs/concept.md`](docs/concept.md) and
+  [`docs/wiki-conventions.md`](docs/wiki-conventions.md).
 - **Research** — ask the library a question. Without an LLM it produces a
   deterministic traversal report (the graph already answers recurrence and
   kinship questions); with a BYOK provider it runs a bounded research loop
@@ -76,13 +80,24 @@ models and runs no agents** — it is the quiet room of the Listening Stack:
 
 ## The store
 
-By default the store data lives **beside this code** and is **never
-tracked**: `index.sqlite`, `objects/` (content-addressed audio), `wiki/`
-(the maintained layer), `settings.json`. Point `AKOUSMATA_PATH` elsewhere to
-separate code and data. The store API is
+By default the store data lives in the platform application-data directory
+and is **never tracked**: `index.sqlite`, `objects/` (content-addressed
+audio), `wiki/` (the maintained layer), and `settings.json`. Set
+`AKOUSMATA_PATH` when the Listening Stack should share another location. The store API is
 [`earworm/packages/py-akousma`](https://github.com/sonicfieldlabs/earworm)
 (spec: `earworm/docs/akousma_spec_v1.md`) — this app is a navigator over
 that protocol, not a fork of it.
+
+## Listening Stack compatibility
+
+| Component | Version / contract | Relationship |
+| --- | --- | --- |
+| [Earworm](https://github.com/sonicfieldlabs/earworm) | `akousma 0.4.0` / spec v1.3 | Canonical store, lineage, kinship, location/capture, and covenant record. |
+| [AKOÚŌ](https://github.com/sonicfieldlabs/akouo) | `akouo/v0.7` | Claim taxonomy, apparatus, routing, memory-lineage listening, and covenants rendered by the navigator. |
+| [OÍDA](https://github.com/sonicfieldlabs/oida) | 0.6.0 / `oida/gateway/v0.2` | Writes and re-listens to records; embeds the complete navigator at `/library/`. |
+| [GERM](https://github.com/sonicfieldlabs/germ) | 0.2.0 | Receives sound, prompt, and lineage handoffs and writes cultivated children. |
+| [Algophony](https://github.com/sonicfieldlabs/algophony) | 0.5.0 | Adds batch evaluation stamps and comparison relations. |
+| [ORAM](https://github.com/sonicfieldlabs/oram) | 0.4.0 | ORAM exports can enter the store through OÍDA or another akousma producer; ORAM is not a direct store writer. |
 
 ## Run
 

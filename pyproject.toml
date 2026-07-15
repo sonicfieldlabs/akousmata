@@ -11,6 +11,11 @@ dependencies = [
     "uvicorn>=0.29",
 ]
 
+[project.urls]
+Homepage = "https://github.com/sonicfieldlabs/akousmata"
+Repository = "https://github.com/sonicfieldlabs/akousmata"
+Issues = "https://github.com/sonicfieldlabs/akousmata/issues"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8",

@@ -1,9 +1,8 @@
 """Store discovery and sibling py-akousma resolution.
 
-The app code lives in the same folder as the store data by default
-(`~/workspace/akousmata`, override with ``AKOUSMATA_PATH``); the data
-files (``index.sqlite``, ``objects/``, ``wiki/``, ``settings.json``) are
-gitignored — the library is personal, the navigator is public.
+The store defaults to the platform application-data directory and can be
+overridden with ``AKOUSMATA_PATH``. The library is personal runtime data; the
+navigator source is public.
 """
 from __future__ import annotations
 
@@ -18,7 +17,13 @@ def store_root() -> Path:
     env = os.getenv("AKOUSMATA_PATH")
     if env:
         return Path(env).expanduser()
-    return REPO_ROOT
+    if (REPO_ROOT / "index.sqlite").exists():
+        return REPO_ROOT
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "akousmata"
+    if os.name == "nt":
+        return Path(os.getenv("LOCALAPPDATA") or (Path.home() / "AppData" / "Local")) / "akousmata"
+    return Path(os.getenv("XDG_DATA_HOME") or (Path.home() / ".local" / "share")) / "akousmata"
 
 
 def wiki_root() -> Path:
