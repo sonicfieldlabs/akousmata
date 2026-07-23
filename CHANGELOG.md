@@ -14,6 +14,8 @@
 - Kept legacy v1.x records valid and visibly named as legacy rather than
   treating missing newer fields as an error.
 - Contract `akousmata/v0.5`; store floor raised to `akousma >= 0.5.0`.
+- CI resolves the canonical Earworm/Python schema implementation from the exact
+  v0.5.0 release tag, keeping the tested dependency boundary reproducible.
 
 ## 0.4.0 — Under Which Ethics
 
