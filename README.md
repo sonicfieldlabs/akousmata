@@ -13,7 +13,7 @@ Every memory carries provenance, structured listenings, causal lineage
 ("made from") and typed kinship ("belongs with"): variants, recurrences,
 series, responses.
 
-Current release: `0.4.0`.
+Current release: `0.5.0`.
 
 ## What it is
 
@@ -51,9 +51,15 @@ models and runs no agents** — it is the quiet room of the Listening Stack:
   counted and attributed, never described — and the commitments it carries),
   and one click filters the library to everything heard under that covenant.
   The navigator displays sovereignty; it never edits it.
+- **Accountable auditums (spec v1.4)** — cards and detail pages expose each
+  attributable listener and route, preserve disagreement position by
+  position, distinguish honest absences, show action authority and receipts,
+  and link revisions. The Audit view reports coverage and structural issues;
+  legacy v1.x records remain valid and are named as legacy, not defective.
 - **Listen again** — a record with resolvable audio can make a fresh pass
   through the Oída gateway; the new claims, routes, apparatus, and summary are
-  filed as another listening entry on the same akousma.
+  filed as a new revision record that points to the earlier hearing. Re-listening
+  never silently overwrites or mutates the account it revises.
 - **Wiki** — an LLM-wiki (after Karpathy's llm-wiki pattern) forked into
   sonic memories: a maintained markdown layer over the records with one page
   per memory, per tag, plus topic syntheses; `index.md` catalog, `log.md`
@@ -94,9 +100,9 @@ that protocol, not a fork of it.
 
 | Component | Version / contract | Relationship |
 | --- | --- | --- |
-| [Earworm](https://github.com/sonicfieldlabs/earworm) | `akousma 0.4.0` / spec v1.3 | Canonical store, lineage, kinship, location/capture, and covenant record. |
-| [AKOÚŌ](https://github.com/sonicfieldlabs/akouo) | `akouo/v0.7` | Claim taxonomy, apparatus, routing, memory-lineage listening, and covenants rendered by the navigator. |
-| [OÍDA](https://github.com/sonicfieldlabs/oida) | 0.6.0 / `oida/gateway/v0.2` | Writes and re-listens to records; embeds the complete navigator at `/library/`. |
+| [Earworm](https://github.com/sonicfieldlabs/earworm) | `akousma 0.5.0` / spec v1.4 | Canonical store and addressable auditum contract: lineage, attributable listenings, disagreement, absence, authority, and revision. |
+| [AKOÚŌ](https://github.com/sonicfieldlabs/akouo) | `akouo/v0.8` | Owns the claim taxonomy and situated listening context rendered by the navigator. |
+| [OÍDA](https://github.com/sonicfieldlabs/oida) | 0.8.0 / `oida/gateway/v0.4` | Writes accountable records and produces additive re-listening revisions; embeds the complete navigator at `/library/`. |
 | [GERM](https://github.com/sonicfieldlabs/germ) | 0.2.0 | Receives sound, prompt, and lineage handoffs and writes cultivated children. |
 | [Algophony](https://github.com/sonicfieldlabs/algophony) | 0.5.0 | Adds batch evaluation stamps and comparison relations. |
 | [ORAM](https://github.com/sonicfieldlabs/oram) | 0.4.0 | ORAM exports can enter the store through OÍDA or another akousma producer; ORAM is not a direct store writer. |

@@ -1,12 +1,12 @@
 [project]
 name = "akousmata"
-version = "0.4.0"
+version = "0.5.0"
 description = "The listening navigator: a local-first library app over the shared akousmata store of sonic memories."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 dependencies = [
-    "akousma>=0.4.0",
+    "akousma>=0.5.0",
     "fastapi>=0.139",
     "python-multipart>=0.0.32",
     "uvicorn>=0.29",

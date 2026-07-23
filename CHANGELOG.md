@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.0 — The Accountable Library
+
+- Added first-class akousma v1.4 auditum rendering: attributable listening
+  routes, preserved disagreement, honest absence, scoped action authority and
+  receipts, and revision lineage.
+- Added `GET /api/audit/accountability`, card summaries, accountable and
+  disagreement filters, health counts, wiki sections, and graph metadata.
+- Manual human memories now declare an attributable auditum and explicitly
+  record when raw audio was not retained.
+- Changed “listen again” from mutation-in-place to a new `same_source_as`
+  revision record. The earlier hearing remains intact.
+- Kept legacy v1.x records valid and visibly named as legacy rather than
+  treating missing newer fields as an error.
+- Contract `akousmata/v0.5`; store floor raised to `akousma >= 0.5.0`.
+
 ## 0.4.0 — Under Which Ethics
 
 - **Covenant rendering (spec v1.3)**: records made under a listening covenant

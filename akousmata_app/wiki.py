@@ -111,6 +111,55 @@ def record_page(store, record: dict[str, Any]) -> str:
             lines.append(text or "_structured payload without a prose summary_")
             lines.append("")
 
+    auditum = record.get("auditum") if isinstance(record.get("auditum"), dict) else None
+    if auditum:
+        lines.append("## Accountable auditum")
+        lines.append(f"- contract: `{auditum.get('contract', '?')}`")
+        for item in auditum.get("listenings") or []:
+            if not isinstance(item, dict):
+                continue
+            route = " → ".join(item.get("route") or [])
+            suffix = f" · route: {route}" if route else ""
+            lines.append(
+                f"- listening `{item.get('listening_id', '?')}`: "
+                f"{item.get('listener_id', '?')} ({item.get('listener_type', '?')}) · "
+                f"`{item.get('report_namespace', '?')}`{suffix}"
+            )
+        for disagreement in auditum.get("disagreements") or []:
+            if not isinstance(disagreement, dict):
+                continue
+            lines.append(
+                f"- disagreement `{disagreement.get('id', '?')}` — "
+                f"{disagreement.get('subject', '?')} ({disagreement.get('status', '?')})"
+            )
+            for position in disagreement.get("positions") or []:
+                if isinstance(position, dict):
+                    lines.append(
+                        f"  - `{position.get('listening_id', '?')}`: "
+                        f"{position.get('statement', '?')}"
+                    )
+        for absence in auditum.get("honest_absences") or []:
+            if isinstance(absence, dict):
+                count = f" ×{absence['count']}" if absence.get("count") is not None else ""
+                lines.append(
+                    f"- absence: {str(absence.get('kind', '?')).replace('_', ' ')} · "
+                    f"{absence.get('subject', '?')}{count} — {absence.get('attributed_to', 'unattributed')}"
+                )
+        for action in auditum.get("actions") or []:
+            if isinstance(action, dict):
+                authority = action.get("authority") if isinstance(action.get("authority"), dict) else {}
+                lines.append(
+                    f"- action `{action.get('action_id', '?')}`: {action.get('status', '?')} · "
+                    f"{action.get('proposal', '?')} — authority `{authority.get('mode', 'missing')}`"
+                )
+        revision = auditum.get("revision") if isinstance(auditum.get("revision"), dict) else None
+        if revision and revision.get("revises_akousma_id"):
+            lines.append(
+                f"- revision of [[record:{revision['revises_akousma_id']}]] — "
+                f"{revision.get('reason', 'reason not recorded')}"
+            )
+        lines.append("")
+
     parents = lineage.get("parent_akousma_ids") or []
     relations = lineage.get("relations") or []
     children = store.children(rid)

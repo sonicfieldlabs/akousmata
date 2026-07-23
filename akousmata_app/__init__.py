@@ -6,5 +6,5 @@ akousma is one sound's memory, the akousmata is the network those memories
 weave — this app is how you walk it.
 """
 
-__version__ = "0.4.0"
-AKOUSMATA_CONTRACT = "akousmata/v0.4"
+__version__ = "0.5.0"
+AKOUSMATA_CONTRACT = "akousmata/v0.5"

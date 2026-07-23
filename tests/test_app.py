@@ -92,6 +92,30 @@ class NavigatorTests(unittest.TestCase):
         data = self.client.get("/api/health").json()
         self.assertEqual(data["total"], 2)
         self.assertEqual(data["by_app"], {"oida": 1, "germ": 1})
+        self.assertEqual(data["accountable"], 0)
+        self.assertEqual(data["with_disagreement"], 0)
+
+    def test_accountability_audit_and_filters(self):
+        initial = self.client.get("/api/audit/accountability").json()
+        self.assertEqual(initial["legacy"], 2)
+        self.assertEqual(initial["accountable"], 0)
+
+        manual = self.client.post("/api/records", json={
+            "summary": "a bell heard without a recording",
+            "notes": "one short decay",
+        }).json()["record"]
+        audit = self.client.get("/api/audit/accountability").json()
+        self.assertEqual(audit["accountable"], 1)
+        self.assertEqual(audit["legacy"], 2)
+        item = next(entry for entry in audit["items"] if entry["akousma_id"] == manual["akousma_id"])
+        self.assertEqual(item["listening_count"], 1)
+        self.assertEqual(item["honest_absence_count"], 1)
+        self.assertEqual(item["issues"], [])
+
+        accountable = self.client.get("/api/records", params={"accountable": True}).json()["records"]
+        self.assertEqual([entry["akousma_id"] for entry in accountable], [manual["akousma_id"]])
+        legacy = self.client.get("/api/records", params={"accountable": False}).json()["records"]
+        self.assertEqual({entry["akousma_id"] for entry in legacy}, {self.parent_id, self.child_id})
 
     def test_location_create_patch_and_map(self):
         created = self.client.post("/api/records", json={
@@ -223,11 +247,14 @@ class NavigatorTests(unittest.TestCase):
         self.assertEqual(entry["contract"], AKOUSMATA_CONTRACT)
         self.assertEqual(record["audio"]["duration_seconds"], 0.1)
         self.assertEqual(record["extensions"]["akousmata.app"]["listener"]["type"], "human")
+        self.assertEqual(record["auditum"]["contract"], "earworm/auditum/v1")
+        self.assertEqual(record["auditum"]["listenings"][0]["listener_type"], "human")
         audio = self.client.get(f"/api/audio/{record['akousma_id']}")
         self.assertEqual(audio.status_code, 200)
         # wiki page written on ingest
         page = self.client.get(f"/api/wiki/page/record/{record['akousma_id']}").json()
         self.assertIn("rain on the skylight", page["markdown"])
+        self.assertIn("Accountable auditum", page["markdown"])
 
     def test_manual_memory_validates_summary_and_audio_upload(self):
         self.assertEqual(self.client.post("/api/records", json={"summary": "  "}).status_code, 400)
@@ -480,15 +507,23 @@ class NavigatorTests(unittest.TestCase):
         self.assertEqual(response.status_code, 422)
         urlopen.assert_not_called()
 
-    def test_listen_again_files_gateway_result_on_same_record(self):
+    def test_listen_again_creates_an_additive_revision(self):
         record = self._manual_with_audio()
         gateway = {
-            "contract": "oida/gateway/v0.2",
+            "contract": "oida/gateway/v0.4",
             "perception_path": "oida_owned",
             "listening_event": {
                 "id": "evt_fresh",
                 "aggregate": {"title": "Fresh rain", "short_summary": "Rain and a distant bus.", "detailed_summary": "A new pass."},
                 "routes": [{"route_id": "field-listener"}],
+                "listening_context": {
+                    "honest_absences": [{
+                        "kind": "not_retained",
+                        "subject": "raw audio",
+                        "attributed_to": "oída retention boundary",
+                        "count": 1,
+                    }],
+                },
             },
             "command_output": {
                 "claim_summary": {"heard": [{"statement": "Rain is audible."}]},
@@ -513,9 +548,19 @@ class NavigatorTests(unittest.TestCase):
         self.assertTrue(body["namespace"].startswith("akousmata.listen_again"))
         from akousmata_app import AKOUSMATA_CONTRACT
         self.assertEqual(body["listening"]["contract"], AKOUSMATA_CONTRACT)
-        self.assertEqual(body["listening"]["payload"]["source_contract"], "oida/gateway/v0.2")
+        self.assertEqual(body["listening"]["payload"]["source_contract"], "oida/gateway/v0.4")
         self.assertEqual(body["listening"]["payload"]["event_id"], "evt_fresh")
         self.assertEqual(body["listening"]["payload"]["claims"]["heard"][0]["statement"], "Rain is audible.")
+        self.assertNotEqual(body["record"]["akousma_id"], record["akousma_id"])
+        self.assertEqual(body["revision_of"], record["akousma_id"])
+        self.assertEqual(
+            body["record"]["auditum"]["revision"]["revises_akousma_id"],
+            record["akousma_id"],
+        )
+        self.assertEqual(body["record"]["auditum"]["disagreements"], [])
+        self.assertEqual(body["record"]["auditum"]["honest_absences"][0]["kind"], "not_retained")
+        original = self.client.get(f"/api/records/{record['akousma_id']}").json()["record"]
+        self.assertNotIn("akousmata.listen_again", original["listening"])
 
     def test_watcher_status_shape(self):
         status = self.client.get("/api/watcher").json()

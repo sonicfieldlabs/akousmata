@@ -43,9 +43,13 @@ addressed.
   maintains. The Memex quality — connections as valuable as documents — is
   native here.
 - **Grounding is enforced by contract.** Listening entries carry their
-  contract pins (`akouo/v0.7`, `akousmata/v0.4`, `oida/gateway/v0.2`); claims carry sources and
+  contract pins (`akouo/v0.8`, `akousmata/v0.5`, `oida/gateway/v0.4`); claims carry sources and
   time anchors upstream. The wiki inherits the stack's epistemic discipline
   instead of hoping for it.
+- **Plurality is not a summary operation.** Akousma v1.4 auditums keep every
+  listener and route attributable, and the wiki renders disagreement as
+  several positions rather than smoothing it into one voice. Honest absence,
+  action authority, and re-listening revision are equally explicit.
 - **The navigator is also for humans without any LLM.** Library, graph,
   wiki, and deterministic research all work with zero keys. BYOK deepens;
   it never gates.

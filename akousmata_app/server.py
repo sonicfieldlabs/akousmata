@@ -133,6 +133,8 @@ def list_records(
     since: str | None = None,
     until: str | None = None,
     covenant: str | None = None,
+    accountable: bool | None = None,
+    disagreement: bool | None = None,
     limit: int = 200,
 ) -> dict[str, Any]:
     store = _store()
@@ -147,6 +149,8 @@ def list_records(
             since=since,
             until=until,
             covenant_id=covenant,
+            has_auditum=accountable,
+            has_disagreement=disagreement,
             limit=max(1, min(limit, 1000)),
         )
         return {"records": [records.card(r) for r in found]}
@@ -640,6 +644,15 @@ def audit_consent() -> dict[str, Any]:
         store.close()
 
 
+@app.get("/api/audit/accountability")
+def audit_accountability() -> dict[str, Any]:
+    store = _store()
+    try:
+        return records.accountability_audit(store)
+    finally:
+        store.close()
+
+
 @app.post("/api/records/{akousma_id}/consent")
 def set_consent(akousma_id: str, body: ConsentBody) -> dict[str, Any]:
     store = _store()
@@ -740,6 +753,15 @@ def listen_again(akousma_id: str, body: ListenAgainBody) -> dict[str, Any]:
         event = gateway_result.get("listening_event") if isinstance(gateway_result.get("listening_event"), dict) else {}
         command_output = gateway_result.get("command_output") if isinstance(gateway_result.get("command_output"), dict) else {}
         aggregate = event.get("aggregate") if isinstance(event.get("aggregate"), dict) else {}
+        outputs = command_output.get("outputs") if isinstance(command_output.get("outputs"), list) else []
+        first_output = outputs[0] if outputs and isinstance(outputs[0], dict) else {}
+        listening_context = (
+            event.get("listening_context")
+            if isinstance(event.get("listening_context"), dict)
+            else first_output.get("listening_context")
+            if isinstance(first_output.get("listening_context"), dict)
+            else {}
+        )
         compact = {
             "route_preset": body.preset,
             "event_id": event.get("id"),
@@ -748,31 +770,90 @@ def listen_again(akousma_id: str, body: ListenAgainBody) -> dict[str, Any]:
             "detailed_summary": aggregate.get("detailed_summary"),
             "claims": command_output.get("claim_summary"),
             "routes": event.get("routes"),
-            "apparatus": (command_output.get("outputs") or [{}])[0].get("apparatus") if isinstance(command_output.get("outputs"), list) else None,
+            "apparatus": first_output.get("apparatus"),
+            "listening_context": listening_context or None,
             "perception_path": gateway_result.get("perception_path"),
             "source_contract": gateway_result.get("contract"),
         }
-        listening = record.setdefault("listening", {})
-        # The navigator owns this wrapper entry. Oída owns the embedded pass,
-        # whose gateway contract is pinned inside the payload; never write or
-        # rewrite another producer's namespace from Akousmata.
         namespace = "akousmata.listen_again"
-        counter = 2
-        while namespace in listening:
-            namespace = f"akousmata.listen_again.{counter}"
-            counter += 1
-        listening[namespace] = {
+        created_at = _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime())
+        listening_entry = {
             "contract": AKOUSMATA_CONTRACT,
-            "created_at": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
+            "created_at": created_at,
             "summary": compact.get("short_summary") or compact.get("title") or "fresh oída pass",
             "payload": compact,
         }
-        store.put(record)
-        wiki.ingest(store, akousma_id)
+
+        # A re-listening is a new record and an attributable revision. The
+        # earlier hearing remains intact; both records may reference the same
+        # content-addressed audio object.
+        import akousma as akousma_protocol
+
+        listening_id = str(event.get("id") or akousma_protocol.new_id("lst"))
+        routes = []
+        for route in event.get("routes") or []:
+            route_id = route.get("route_id") if isinstance(route, dict) else route
+            if isinstance(route_id, str) and route_id:
+                routes.append(route_id)
+        absence_items = []
+        for index, absence in enumerate(listening_context.get("honest_absences") or []):
+            if not isinstance(absence, dict):
+                continue
+            absence_items.append({
+                "id": str(absence.get("id") or akousma_protocol.new_id("abs")),
+                "kind": str(absence.get("kind") or "undetermined"),
+                "subject": str(absence.get("subject") or "unspecified evidence"),
+                "attributed_to": str(absence.get("attributed_to") or "oída listening boundary"),
+                "listening_id": listening_id,
+                **({"count": int(absence["count"])} if isinstance(absence.get("count"), int) else {}),
+                **({"note": str(absence["note"])} if absence.get("note") else {}),
+            })
+        auditum = akousma_protocol.auditum(
+            listenings=[{
+                "listening_id": listening_id,
+                "listener_id": str(event.get("listener_id") or gateway_result.get("perception_path") or "oida-gateway"),
+                "listener_type": "agent",
+                "created_at": created_at,
+                "report_namespace": namespace,
+                "contract": str(gateway_result.get("contract") or "oida/gateway/unknown"),
+                "context_ref": f"#/listening/{namespace}/payload/listening_context" if listening_context else None,
+                "apparatus_ref": f"#/listening/{namespace}/payload/apparatus" if compact.get("apparatus") else None,
+                "claim_set_ref": f"#/listening/{namespace}/payload/claims" if compact.get("claims") else None,
+                "route": routes,
+            }],
+            honest_absences=absence_items,
+            revision={
+                "revision_id": akousma_protocol.new_id("rev"),
+                "revises_akousma_id": akousma_id,
+                "reason": "explicit listen-again pass through the OÍDA gateway",
+                "changes": ["fresh listening report", "fresh apparatus and context declaration"],
+                "created_at": created_at,
+            },
+        )
+        new_record = akousma_protocol.new_akousma(
+            audio=dict(record.get("audio") or {}),
+            originating_app="akousmata",
+            source_type="imported",
+            origin=str((record.get("provenance") or {}).get("origin") or "file"),
+            listening={namespace: listening_entry},
+            relations=[akousma_protocol.relation("same_source_as", akousma_id, note="explicit re-listening revision")],
+            tags=list(dict.fromkeys([*(record.get("tags") or []), "re-listening"])),
+            extensions={"akousmata.app": {"revision_trigger": "listen_again"}},
+            summary=listening_entry["summary"],
+            covenant=first_output.get("covenant") if isinstance(first_output.get("covenant"), dict) else None,
+            auditum=auditum,
+        )
+        source_provenance = record.get("provenance") if isinstance(record.get("provenance"), dict) else {}
+        for key in ("consent_status", "rights_note"):
+            if source_provenance.get(key) is not None:
+                new_record["provenance"][key] = source_provenance[key]
+        store.put(new_record)
+        wiki.ingest(store, new_record["akousma_id"])
         return {
             "namespace": namespace,
-            "listening": listening[namespace],
-            "record": record,
+            "listening": listening_entry,
+            "record": new_record,
+            "revision_of": akousma_id,
             "gateway": {"contract": gateway_result.get("contract"), "perception_path": gateway_result.get("perception_path")},
         }
     finally:
