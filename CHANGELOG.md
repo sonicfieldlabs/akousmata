@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.6.0 — Decisions, Absence, and Accountable Forgetting
+
+- Added first-class akousma v1.5 / Earworm auditum v2 rendering across cards,
+  details, graph nodes, deterministic wiki pages, and the accountability audit.
+  Route and stop decisions remain attributable and show their reasons,
+  authority, producer references, and receipts.
+- Decision-only records are valid memories of a gate that closed before
+  hearing. They render without audio or a listening count and are never
+  mistaken for an empty or failed acoustic report.
+- Forget now uses `earworm/forgetting-receipt/v1`, returns the content-free
+  receipt to the caller, exposes a receipt index, and preserves Earworm's
+  resurrection guard. Actor and reason are explicit; forgotten description,
+  tags, location, and audio URI never enter the receipt.
+- Plural listener counts no longer produce a false “ear swarm.” Only an
+  explicit ensemble with influence edges, preserved permissions and
+  disagreements, and a dissolution rule receives that name.
+- Manual human memories and Listen again revisions now emit auditum v2 route
+  decisions. Re-listening preserves Oída v0.3 temporal passes, provenance,
+  route decisions, and honest absences; a pre-listening refusal cannot be
+  converted into a listening revision.
+- GERM is optional and unconfigured by default. Its controls and deep links
+  appear only after a local URL is explicitly set.
+- Contract `akousmata/v0.6`; store floor raised to `akousma >= 0.6.0`.
+
 ## 0.5.0 — The Accountable Library
 
 - Added first-class akousma v1.4 auditum rendering: attributable listening

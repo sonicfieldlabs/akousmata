@@ -9,11 +9,12 @@ files.
 The akousmata stores what agents listen (oída's ears, algophony's
 evaluations, germ's cultivations) **and what you listen**: manual
 human listening events live in the same library, with the listener declared.
-Every memory carries provenance, structured listenings, causal lineage
-("made from") and typed kinship ("belongs with"): variants, recurrences,
-series, responses.
+Every memory carries provenance and causal lineage ("made from") plus typed
+kinship ("belongs with"): variants, recurrences, series, responses. A heard
+memory carries attributable listenings; a gate that closed before hearing can
+instead carry a decision-only auditum without pretending that sound occurred.
 
-Current release: `0.5.0`.
+Current release: `0.6.0`.
 
 ## What it is
 
@@ -22,8 +23,9 @@ models and runs no agents** — it is the quiet room of the Listening Stack:
 
 - **Library** — filter by app, origin, tag, text, time; play resolvable
   audio; edit tags, notes, and summaries; add manual memories (heard live or
-  from a file, which is content-addressed into the store); forget (removal
-  that leaves honest absence).
+  from a file, which is content-addressed into the store); forget with a
+  content-free durable receipt that leaves absence visible without retaining
+  the forgotten description.
 - **Graph** — the memory system as a navigable graph: solid edges are
   lineage, dashed edges are kinship, colors are originating apps.
 - **Map** — the listening map: where listenings happened, not where sounds
@@ -51,11 +53,17 @@ models and runs no agents** — it is the quiet room of the Listening Stack:
   counted and attributed, never described — and the commitments it carries),
   and one click filters the library to everything heard under that covenant.
   The navigator displays sovereignty; it never edits it.
-- **Accountable auditums (spec v1.4)** — cards and detail pages expose each
-  attributable listener and route, preserve disagreement position by
-  position, distinguish honest absences, show action authority and receipts,
-  and link revisions. The Audit view reports coverage and structural issues;
-  legacy v1.x records remain valid and are named as legacy, not defective.
+- **Accountable auditums (spec v1.5)** — cards, detail pages, the wiki, graph,
+  and Audit view expose each attributable listener and route, temporal-pass
+  and provenance references, preserved disagreement, honest absences, action
+  authority, route decisions, receipts, and revisions. A refusal before
+  hearing is rendered as a decision-only memory with no audio or acoustic
+  claim. Legacy v1.x records remain valid and are named as legacy, not
+  defective.
+- **Plural listening and declared ear swarms** — several listeners stay
+  distinct by default. The navigator uses “ear swarm” only for an explicit
+  ensemble that records influence, preserved permissions and disagreements,
+  and a dissolution rule; listener count alone never manufactures consensus.
 - **Listen again** — a record with resolvable audio can make a fresh pass
   through the Oída gateway; the new claims, routes, apparatus, and summary are
   filed as a new revision record that points to the earlier hearing. Re-listening
@@ -77,9 +85,9 @@ models and runs no agents** — it is the quiet room of the Listening Stack:
   Keys live in your local `settings.json`, never in the repo. CLI commands are
   parsed as an executable and arguments; use a wrapper script if you need shell
   pipelines or redirection.
-- **Germ handoff** — send any memory into germ as sound, prompt, or lineage
-  (the same three buttons oída uses), turning listened things into sounding
-  things.
+- **Optional GERM handoff** — configure a local GERM URL to send a memory as
+  sound, prompt, or lineage. With no URL configured, the library has no GERM
+  dependency and shows no handoff controls.
 - **Realtime** — the navigator watches the store; memories written by oída
   or germ appear as they happen.
 - **Durable maintenance watcher** — immediately reconciles records created
@@ -100,10 +108,10 @@ that protocol, not a fork of it.
 
 | Component | Version / contract | Relationship |
 | --- | --- | --- |
-| [Earworm](https://github.com/sonicfieldlabs/earworm) | `akousma 0.5.0` / spec v1.4 | Canonical store and addressable auditum contract: lineage, attributable listenings, disagreement, absence, authority, and revision. |
-| [AKOÚŌ](https://github.com/sonicfieldlabs/akouo) | `akouo/v0.8` | Owns the claim taxonomy and situated listening context rendered by the navigator. |
-| [OÍDA](https://github.com/sonicfieldlabs/oida) | 0.8.0 / `oida/gateway/v0.4` | Writes accountable records and produces additive re-listening revisions; embeds the complete navigator at `/library/`. |
-| [GERM](https://github.com/sonicfieldlabs/germ) | 0.2.0 | Receives sound, prompt, and lineage handoffs and writes cultivated children. |
+| [Earworm](https://github.com/sonicfieldlabs/earworm) | `akousma 0.6.0` / spec v1.5 | Canonical store and addressable auditum contract: decisions, lineage, attributable passes, disagreement, absence, forgetting receipts, ensembles, authority, and revision. |
+| [AKOÚŌ](https://github.com/sonicfieldlabs/akouo) | `akouo/v0.9` | Owns claim taxonomy, provenance, temporal passes, route decisions, corpus disclosure, and situated context rendered by the navigator. |
+| [OÍDA](https://github.com/sonicfieldlabs/oida) | 0.9.0 / `oida/gateway/v0.5` | Writes listening events v0.3 and decision-only route outcomes; produces additive re-listening revisions and embeds the navigator at `/library/`. |
+| [GERM](https://github.com/sonicfieldlabs/germ) | optional | Receives explicit sound, prompt, and lineage handoffs when separately configured. |
 | [Algophony](https://github.com/sonicfieldlabs/algophony) | 0.5.0 | Adds batch evaluation stamps and comparison relations. |
 | [ORAM](https://github.com/sonicfieldlabs/oram) | 0.4.0 | ORAM exports can enter the store through OÍDA or another akousma producer; ORAM is not a direct store writer. |
 
@@ -121,7 +129,7 @@ canonical sibling packages are editable. Tests: `uv run pytest -q`.
 ## The stack around it
 
 - **oída** listens and remembers (and embeds this library view as its
-  history); **germ** cultivates remembered sounds into new ones; **algophony**
+  history); optional **GERM** can cultivate remembered sounds into new ones; **algophony**
   evaluates batches and stamps results back onto records; **AKOÚŌ** defines
   how everything listens. The akousmata is where all of it — and you —
   keep one shared memory.

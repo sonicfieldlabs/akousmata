@@ -145,6 +145,22 @@ def record_page(store, record: dict[str, Any]) -> str:
                     f"- absence: {str(absence.get('kind', '?')).replace('_', ' ')} · "
                     f"{absence.get('subject', '?')}{count} — {absence.get('attributed_to', 'unattributed')}"
                 )
+        for decision in auditum.get("route_decisions") or []:
+            if not isinstance(decision, dict):
+                continue
+            authority = decision.get("authority") if isinstance(decision.get("authority"), dict) else {}
+            lines.append(
+                f"- route decision `{decision.get('decision_id', '?')}`: "
+                f"{decision.get('gate', '?')} → {str(decision.get('outcome', '?')).replace('_', ' ')} · "
+                f"{decision.get('subject', '?')} — {decision.get('reason', 'reason not recorded')} "
+                f"(actor: {authority.get('actor', 'unattributed')})"
+            )
+            receipt = decision.get("receipt") if isinstance(decision.get("receipt"), dict) else None
+            if receipt:
+                lines.append(
+                    f"  - receipt: {receipt.get('result', 'recorded')} · "
+                    f"recovery: {receipt.get('recovery', 'not declared')}"
+                )
         for action in auditum.get("actions") or []:
             if isinstance(action, dict):
                 authority = action.get("authority") if isinstance(action.get("authority"), dict) else {}
@@ -153,6 +169,19 @@ def record_page(store, record: dict[str, Any]) -> str:
                     f"{action.get('proposal', '?')} — authority `{authority.get('mode', 'missing')}`"
                 )
         revision = auditum.get("revision") if isinstance(auditum.get("revision"), dict) else None
+        ensemble = auditum.get("ensemble") if isinstance(auditum.get("ensemble"), dict) else None
+        if ensemble:
+            lines.append(
+                f"- ensemble `{ensemble.get('id', '?')}`: "
+                f"{str(ensemble.get('kind', '?')).replace('_', ' ')} · "
+                f"{len(ensemble.get('listening_ids') or [])} listenings · "
+                f"{len(ensemble.get('influence_edges') or [])} influence edges"
+            )
+            lines.append(
+                f"  - permissions preserved: {bool(ensemble.get('permissions_preserved'))}; "
+                f"disagreements preserved: {bool(ensemble.get('disagreements_preserved'))}; "
+                f"dissolution: {ensemble.get('dissolution_rule', 'not declared')}"
+            )
         if revision and revision.get("revises_akousma_id"):
             lines.append(
                 f"- revision of [[record:{revision['revises_akousma_id']}]] — "

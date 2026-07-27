@@ -54,6 +54,8 @@ def list_records(
     covenant_id: str | None = None,
     has_auditum: bool | None = None,
     has_disagreement: bool | None = None,
+    has_route_decision: bool | None = None,
+    has_stop_decision: bool | None = None,
     limit: int = 200,
 ) -> list[dict[str, Any]]:
     kwargs: dict[str, Any] = {}
@@ -64,6 +66,10 @@ def list_records(
         kwargs["has_auditum"] = has_auditum
     if has_disagreement is not None:
         kwargs["has_disagreement"] = has_disagreement
+    if has_route_decision is not None:
+        kwargs["has_route_decision"] = has_route_decision
+    if has_stop_decision is not None:
+        kwargs["has_stop_decision"] = has_stop_decision
     return store.query(
         originating_app=app,
         origin=origin,
@@ -95,6 +101,9 @@ def summary_line(record: dict[str, Any]) -> str:
     prompt = (record.get("lineage") or {}).get("prompt")
     if isinstance(prompt, str) and prompt.strip():
         return prompt.strip()
+    subject = record.get("subject")
+    if isinstance(subject, str) and subject.strip():
+        return f"Decision about {subject.strip()}"
     return ", ".join(str(t) for t in record.get("tags") or []) or "(no summary)"
 
 
@@ -122,6 +131,10 @@ def card(record: dict[str, Any]) -> dict[str, Any]:
         "disagreement_count": accountability["disagreement_count"],
         "honest_absence_count": accountability["honest_absence_count"],
         "action_count": accountability["action_count"],
+        "route_decision_count": accountability["route_decision_count"],
+        "stop_decision_count": accountability["stop_decision_count"],
+        "decision_only": accountability["decision_only"],
+        "ensemble_kind": accountability["ensemble_kind"],
         "revision_of": accountability["revision_of"],
         "parent_count": len(lineage.get("parent_akousma_ids") or []),
         "relation_count": len(lineage.get("relations") or []),
@@ -152,35 +165,39 @@ def detail(store, akousma_id: str) -> dict[str, Any] | None:
 
 
 def auditum_summary(record: dict[str, Any], *, known_record_ids: set[str] | None = None) -> dict[str, Any]:
-    """Compact, deterministic inspection of akousma v1.4 accountability.
+    """Inspect v1/v2 accountability without adjudicating any listening claim.
 
-    Legacy records are valid and reported as legacy, not defective. Current
-    auditums are checked for attribution, preserved disagreement, authority,
-    and revision integrity without interpreting any listening claim.
+    A v2 auditum may be a hearing or a complete decision made before hearing.
+    Plural listeners are not called an ear swarm unless an explicit ensemble
+    declares influence, preserved permissions/disagreement, and dissolution.
     """
+    empty = {
+        "status": "legacy",
+        "contract": None,
+        "listening_count": 0,
+        "distinct_listener_count": 0,
+        "plural_listening": False,
+        "ensemble_kind": None,
+        "ear_swarm": False,
+        "disagreement_count": 0,
+        "honest_absence_count": 0,
+        "action_count": 0,
+        "route_decision_count": 0,
+        "stop_decision_count": 0,
+        "decision_only": False,
+        "revision_of": None,
+        "issues": [],
+    }
     block = record.get("auditum")
     if not isinstance(block, dict):
-        return {
-            "status": "legacy",
-            "contract": None,
-            "listening_count": 0,
-            "distinct_listener_count": 0,
-            "ear_swarm": False,
-            "disagreement_count": 0,
-            "honest_absence_count": 0,
-            "action_count": 0,
-            "revision_of": None,
-            "issues": [],
-        }
+        return empty
 
     issues: list[str] = []
     contract = block.get("contract")
-    if contract != "earworm/auditum/v1":
+    if contract not in {"earworm/auditum/v1", "earworm/auditum/v2"}:
         issues.append("auditum contract is missing or unsupported")
 
     listenings = block.get("listenings") if isinstance(block.get("listenings"), list) else []
-    if not listenings:
-        issues.append("auditum has no attributable listenings")
     listening_ids: list[str] = []
     listener_ids: set[str] = set()
     namespaces = record.get("listening") if isinstance(record.get("listening"), dict) else {}
@@ -201,9 +218,55 @@ def auditum_summary(record: dict[str, Any], *, known_record_ids: set[str] | None
         namespace = item.get("report_namespace")
         if not isinstance(namespace, str) or namespace not in namespaces:
             issues.append(f"listening {listening_id or index + 1} points to a missing report namespace")
+        for influence in item.get("influenced_by") or []:
+            if not isinstance(influence, dict) or not influence.get("listening_id") or not influence.get("effect"):
+                issues.append(f"listening {listening_id or index + 1} has an incomplete influence declaration")
     if len(set(listening_ids)) != len(listening_ids):
         issues.append("listening ids are not unique")
     listening_id_set = set(listening_ids)
+    for item in listenings:
+        if not isinstance(item, dict):
+            continue
+        for influence in item.get("influenced_by") or []:
+            if isinstance(influence, dict) and influence.get("listening_id") not in listening_id_set:
+                issues.append(f"listening {item.get('listening_id') or '?'} is influenced by an unknown listening")
+
+    decisions = block.get("route_decisions") if isinstance(block.get("route_decisions"), list) else []
+    decision_ids: list[str] = []
+    stop_outcomes = {"pause", "defer", "abstain", "refuse", "withhold", "forget", "do_not_act"}
+    stop_decisions = []
+    for index, decision in enumerate(decisions):
+        if not isinstance(decision, dict):
+            issues.append(f"route decision {index + 1} is not an object")
+            continue
+        decision_id = decision.get("decision_id")
+        if not isinstance(decision_id, str) or not decision_id:
+            issues.append(f"route decision {index + 1} has no id")
+        else:
+            decision_ids.append(decision_id)
+        authority = decision.get("authority") if isinstance(decision.get("authority"), dict) else {}
+        if not authority.get("actor"):
+            issues.append(f"route decision {decision_id or index + 1} has no attributed actor")
+        linked_listening = decision.get("listening_id")
+        if linked_listening is not None and linked_listening not in listening_id_set:
+            issues.append(f"route decision {decision_id or index + 1} references an unknown listening")
+        if decision.get("outcome") in stop_outcomes:
+            stop_decisions.append(decision)
+    if len(set(decision_ids)) != len(decision_ids):
+        issues.append("route decision ids are not unique")
+
+    decision_only = not listenings and bool(decisions)
+    if contract == "earworm/auditum/v1" and not listenings:
+        issues.append("auditum/v1 has no attributable listenings")
+    if contract == "earworm/auditum/v2" and not decisions:
+        issues.append("auditum/v2 has no route decisions")
+    if decision_only and not any(
+        decision.get("gate") in {"input", "capture"}
+        and decision.get("outcome") in {"pause", "defer", "abstain", "refuse", "withhold"}
+        for decision in decisions
+        if isinstance(decision, dict)
+    ):
+        issues.append("an empty listening list needs an input or capture stop decision")
 
     disagreements = block.get("disagreements") if isinstance(block.get("disagreements"), list) else []
     for index, disagreement in enumerate(disagreements):
@@ -230,6 +293,8 @@ def auditum_summary(record: dict[str, Any], *, known_record_ids: set[str] | None
     for index, absence in enumerate(absences):
         if not isinstance(absence, dict) or not absence.get("attributed_to"):
             issues.append(f"honest absence {index + 1} is unattributed")
+        elif contract == "earworm/auditum/v2" and absence.get("kind") == "undetermined":
+            issues.append(f"honest absence {index + 1} uses undetermined, which belongs to claims")
 
     actions = block.get("actions") if isinstance(block.get("actions"), list) else []
     for index, action in enumerate(actions):
@@ -243,6 +308,22 @@ def auditum_summary(record: dict[str, Any], *, known_record_ids: set[str] | None
         if status in {"executed", "failed", "reverted"} and not isinstance(action.get("receipt"), dict):
             issues.append(f"action {action.get('action_id') or index + 1} has no receipt")
 
+    ensemble = block.get("ensemble") if isinstance(block.get("ensemble"), dict) else None
+    ensemble_kind = ensemble.get("kind") if ensemble else None
+    if ensemble:
+        ensemble_ids = ensemble.get("listening_ids") if isinstance(ensemble.get("listening_ids"), list) else []
+        if len(set(ensemble_ids)) < 2 or not set(ensemble_ids).issubset(listening_id_set):
+            issues.append("ensemble does not identify at least two known listenings")
+        if ensemble_kind == "ear_swarm":
+            if not ensemble.get("influence_edges"):
+                issues.append("ear swarm has no influence edges")
+            if ensemble.get("permissions_preserved") is not True:
+                issues.append("ear swarm does not preserve permissions")
+            if ensemble.get("disagreements_preserved") is not True:
+                issues.append("ear swarm does not preserve disagreements")
+            if not ensemble.get("dissolution_rule"):
+                issues.append("ear swarm has no dissolution rule")
+
     revision = block.get("revision") if isinstance(block.get("revision"), dict) else None
     revision_of = revision.get("revises_akousma_id") if revision else None
     if revision_of and known_record_ids is not None and revision_of not in known_record_ids:
@@ -253,10 +334,15 @@ def auditum_summary(record: dict[str, Any], *, known_record_ids: set[str] | None
         "contract": contract if isinstance(contract, str) else None,
         "listening_count": len(listenings),
         "distinct_listener_count": len(listener_ids),
-        "ear_swarm": len(listener_ids) > 1,
+        "plural_listening": len(listener_ids) > 1,
+        "ensemble_kind": ensemble_kind,
+        "ear_swarm": ensemble_kind == "ear_swarm",
         "disagreement_count": len(disagreements),
         "honest_absence_count": len(absences),
         "action_count": len(actions),
+        "route_decision_count": len(decisions),
+        "stop_decision_count": len(stop_decisions),
+        "decision_only": decision_only,
         "revision_of": revision_of,
         "issues": issues,
     }
@@ -409,8 +495,24 @@ def create_manual_memory(
                 "contract": AKOUSMATA_CONTRACT,
                 "claim_set_ref": None,
                 "route": ["manual-human-listening"],
+                "route_decision_refs": ["decision-manual-entry"],
             }],
             honest_absences=honest_absences,
+            route_decisions=[lib.route_decision(
+                "decision-manual-entry",
+                gate="input",
+                outcome="proceed",
+                subject="manual listening account",
+                reason="A human explicitly chose to add this bounded listening account to the library.",
+                actor="manual-human-listener",
+                decided_at=created_at,
+                listening_id=listening_id,
+                producer_contract=AKOUSMATA_CONTRACT,
+                authority_mode="execute_scoped",
+                granted_by="explicit manual Remember action",
+                requires_confirmation=False,
+                reversible=True,
+            )],
         ),
     )
     record["extensions"]["akousmata.app"] = {"listener": {"type": "human", "process": "manual_entry"}}
@@ -619,15 +721,22 @@ def accountability_audit(store) -> dict[str, Any]:
             "originating_app": (record.get("provenance") or {}).get("originating_app"),
             **account,
         })
+    receipts = store.forgetting_receipts() if hasattr(store, "forgetting_receipts") else []
     return {
         "total": len(items),
         "accountable": sum(1 for item in items if item["status"] == "accountable"),
         "legacy": sum(1 for item in items if item["status"] == "legacy"),
         "with_issues": sum(1 for item in items if item["status"] == "issues"),
         "ear_swarms": sum(1 for item in items if item["ear_swarm"]),
+        "plural_listenings": sum(1 for item in items if item["plural_listening"]),
         "with_disagreement": sum(1 for item in items if item["disagreement_count"] > 0),
         "with_honest_absence": sum(1 for item in items if item["honest_absence_count"] > 0),
+        "with_route_decisions": sum(1 for item in items if item["route_decision_count"] > 0),
+        "with_stop_decisions": sum(1 for item in items if item["stop_decision_count"] > 0),
+        "decision_only": sum(1 for item in items if item["decision_only"]),
         "revisions": sum(1 for item in items if item["revision_of"]),
+        "forgetting_receipt_count": len(receipts),
+        "forgetting_receipts": receipts,
         "items": items,
     }
 
@@ -668,9 +777,12 @@ def stats(store) -> dict[str, Any]:
     latest = store.conn.execute("SELECT MAX(created_at) AS m FROM akousmata").fetchone()
     accountability = store.conn.execute(
         """SELECT COUNT(*) AS accountable,
-                  SUM(CASE WHEN disagreement_count > 0 THEN 1 ELSE 0 END) AS with_disagreement
+                  SUM(CASE WHEN disagreement_count > 0 THEN 1 ELSE 0 END) AS with_disagreement,
+                  SUM(CASE WHEN route_decision_count > 0 THEN 1 ELSE 0 END) AS with_route_decisions,
+                  SUM(CASE WHEN stop_decision_count > 0 THEN 1 ELSE 0 END) AS with_stop_decisions
            FROM akousmata WHERE auditum_contract IS NOT NULL"""
     ).fetchone()
+    forgetting_receipt_count = len(store.forgetting_receipts()) if hasattr(store, "forgetting_receipts") else 0
     return {
         "total": total,
         "by_app": by_app,
@@ -678,4 +790,7 @@ def stats(store) -> dict[str, Any]:
         "latest_created_at": latest["m"],
         "accountable": accountability["accountable"],
         "with_disagreement": accountability["with_disagreement"] or 0,
+        "with_route_decisions": accountability["with_route_decisions"] or 0,
+        "with_stop_decisions": accountability["with_stop_decisions"] or 0,
+        "forgetting_receipt_count": forgetting_receipt_count,
     }

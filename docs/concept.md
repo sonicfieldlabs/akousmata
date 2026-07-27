@@ -43,13 +43,21 @@ addressed.
   maintains. The Memex quality — connections as valuable as documents — is
   native here.
 - **Grounding is enforced by contract.** Listening entries carry their
-  contract pins (`akouo/v0.8`, `akousmata/v0.5`, `oida/gateway/v0.4`); claims carry sources and
+  contract pins (`akouo/v0.9`, `akousmata/v0.6`, `oida/gateway/v0.5`); claims carry sources and
   time anchors upstream. The wiki inherits the stack's epistemic discipline
   instead of hoping for it.
-- **Plurality is not a summary operation.** Akousma v1.4 auditums keep every
+- **Plurality is not a summary operation.** Akousma v1.5 auditums keep every
   listener and route attributable, and the wiki renders disagreement as
   several positions rather than smoothing it into one voice. Honest absence,
-  action authority, and re-listening revision are equally explicit.
+  route decisions, action authority, and re-listening revision are equally
+  explicit. Several listeners are plural listening; “ear swarm” is reserved
+  for an explicit ensemble with influence, permission, disagreement, and
+  dissolution declarations.
+- **Coded silence is not an empty record.** A refusal before capture can enter
+  the library as a decision-only auditum: subject, attributed absence, route
+  decision, and receipt, with no audio or invented acoustic claim. Forgetting
+  similarly leaves a content-free receipt without reconstructing what was
+  removed.
 - **The navigator is also for humans without any LLM.** Library, graph,
   wiki, and deterministic research all work with zero keys. BYOK deepens;
   it never gates.
