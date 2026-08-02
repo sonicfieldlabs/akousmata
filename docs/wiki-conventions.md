@@ -16,6 +16,13 @@ the `human.*` and `akousmata.*` listening namespaces, and
 listening block, the capture description, or a listening covenant. Withheld
 material stays an attributed absence and is never reconstructed.
 
+For records it creates, Akousmata also emits Earworm's `auditum` block. It
+does not edit the auditum on an existing producer record. A “listen again”
+operation therefore creates a new revision record and links back to the
+earlier hearing; the old report, its participants, and any disagreement stay
+unchanged. Wiki pages render each position separately and never infer a
+consensus from several listenings.
+
 Location is consent-scoped: exports always remove it, and the optional map
 layer is disabled by default. Provider credentials remain in the local store
 settings and are never written to exported records or logs.

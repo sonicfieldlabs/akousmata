@@ -12,7 +12,7 @@ from typing import Any
 from akousmata_app.paths import settings_path
 
 DEFAULTS: dict[str, Any] = {
-    "germ_url": "http://127.0.0.1:5178",
+    "germ_url": "",
     "oida_url": "http://127.0.0.1:8765",
     "llm": {
         # provider: "none" | "openai_compatible" | "anthropic" | "cli"

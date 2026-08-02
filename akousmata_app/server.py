@@ -2,8 +2,8 @@
 
 Local-first FastAPI app over the shared store. Loads no models and runs no
 agents: filtering, tagging, editing, manual memories, graph navigation, the
-wiki layer, research sessions (optionally LLM-deepened via BYOK), germ
-handoff links, and a realtime change feed.
+wiki layer, research sessions (optionally LLM-deepened via BYOK), optional
+GERM handoff links, and a realtime change feed.
 """
 from __future__ import annotations
 
@@ -79,6 +79,8 @@ class RelationBody(BaseModel):
 
 class ForgetBody(BaseModel):
     delete_audio: bool = False
+    actor: str = Field(default="human-operator", min_length=1, max_length=200)
+    reason: str = Field(default="explicit forget request", min_length=1, max_length=1000)
 
 
 class ResearchBody(BaseModel):
@@ -133,6 +135,10 @@ def list_records(
     since: str | None = None,
     until: str | None = None,
     covenant: str | None = None,
+    accountable: bool | None = None,
+    disagreement: bool | None = None,
+    route_decision: bool | None = None,
+    stop_decision: bool | None = None,
     limit: int = 200,
 ) -> dict[str, Any]:
     store = _store()
@@ -147,6 +153,10 @@ def list_records(
             since=since,
             until=until,
             covenant_id=covenant,
+            has_auditum=accountable,
+            has_disagreement=disagreement,
+            has_route_decision=route_decision,
+            has_stop_decision=stop_decision,
             limit=max(1, min(limit, 1000)),
         )
         return {"records": [records.card(r) for r in found]}
@@ -283,13 +293,35 @@ def delete_relation(akousma_id: str, type: str, target_akousma_id: str) -> dict[
 def forget(akousma_id: str, body: ForgetBody) -> dict[str, Any]:
     store = _store()
     try:
-        if not hasattr(store, "forget"):
-            raise HTTPException(status_code=501, detail="py-akousma >= 0.2.2 required for forget()")
-        removed = store.forget(akousma_id, delete_audio=body.delete_audio)
-        if not removed:
+        if not hasattr(store, "forget_with_receipt"):
+            raise HTTPException(status_code=501, detail="py-akousma >= 0.6.0 required for forgetting receipts")
+        receipt = store.forget_with_receipt(
+            akousma_id,
+            delete_audio=body.delete_audio,
+            actor=body.actor,
+            reason=body.reason,
+        )
+        if receipt is None:
             raise HTTPException(status_code=404, detail=f"akousma not found: {akousma_id}")
-        wiki.log_append("forget", akousma_id, "record removed; inbound edges remain as absence")
-        return {"forgotten": akousma_id}
+        wiki.log_append(
+            "forget",
+            akousma_id,
+            f"record removed with receipt {receipt['receipt_id']}; inbound edges remain as absence",
+        )
+        return {"forgotten": akousma_id, "receipt": receipt}
+    finally:
+        store.close()
+
+
+@app.get("/api/forgetting-receipts")
+def forgetting_receipts(akousma_id: str | None = None) -> dict[str, Any]:
+    """Content-free proof of forgetting, without resurrecting forgotten data."""
+    store = _store()
+    try:
+        if not hasattr(store, "forgetting_receipts"):
+            raise HTTPException(status_code=501, detail="py-akousma >= 0.6.0 required for forgetting receipts")
+        items = store.forgetting_receipts(akousma_id=akousma_id)
+        return {"receipts": items, "total": len(items)}
     finally:
         store.close()
 
@@ -349,7 +381,12 @@ def germ_link(akousma_id: str, mode: str = "sound") -> dict[str, Any]:
             raise HTTPException(status_code=404, detail=f"akousma not found: {akousma_id}")
     finally:
         store.close()
-    base = str(load_settings().get("germ_url") or "http://127.0.0.1:5178").rstrip("/")
+    base = str(load_settings().get("germ_url") or "").strip().rstrip("/")
+    if not base:
+        raise HTTPException(
+            status_code=409,
+            detail="GERM is optional and is not configured; set its URL in Settings before a handoff",
+        )
     return {
         "akousma_id": akousma_id,
         "mode": mode,
@@ -640,6 +677,15 @@ def audit_consent() -> dict[str, Any]:
         store.close()
 
 
+@app.get("/api/audit/accountability")
+def audit_accountability() -> dict[str, Any]:
+    store = _store()
+    try:
+        return records.accountability_audit(store)
+    finally:
+        store.close()
+
+
 @app.post("/api/records/{akousma_id}/consent")
 def set_consent(akousma_id: str, body: ConsentBody) -> dict[str, Any]:
     store = _store()
@@ -738,8 +784,30 @@ def listen_again(akousma_id: str, body: ListenAgainBody) -> dict[str, Any]:
             raise HTTPException(status_code=502, detail=f"oída did not answer at {oida_url}: {exc}") from exc
 
         event = gateway_result.get("listening_event") if isinstance(gateway_result.get("listening_event"), dict) else {}
+        if not event:
+            route_outcome = (
+                gateway_result.get("route_outcome")
+                if isinstance(gateway_result.get("route_outcome"), dict)
+                else None
+            )
+            raise HTTPException(
+                status_code=423,
+                detail={
+                    "message": "oída completed the request as a pre-listening decision; no listening revision was filed",
+                    "route_outcome": route_outcome,
+                },
+            )
         command_output = gateway_result.get("command_output") if isinstance(gateway_result.get("command_output"), dict) else {}
         aggregate = event.get("aggregate") if isinstance(event.get("aggregate"), dict) else {}
+        outputs = command_output.get("outputs") if isinstance(command_output.get("outputs"), list) else []
+        first_output = outputs[0] if outputs and isinstance(outputs[0], dict) else {}
+        listening_context = (
+            event.get("listening_context")
+            if isinstance(event.get("listening_context"), dict)
+            else first_output.get("listening_context")
+            if isinstance(first_output.get("listening_context"), dict)
+            else {}
+        )
         compact = {
             "route_preset": body.preset,
             "event_id": event.get("id"),
@@ -748,31 +816,151 @@ def listen_again(akousma_id: str, body: ListenAgainBody) -> dict[str, Any]:
             "detailed_summary": aggregate.get("detailed_summary"),
             "claims": command_output.get("claim_summary"),
             "routes": event.get("routes"),
-            "apparatus": (command_output.get("outputs") or [{}])[0].get("apparatus") if isinstance(command_output.get("outputs"), list) else None,
+            "apparatus": first_output.get("apparatus"),
+            "listening_context": listening_context or None,
+            "listening_provenance": event.get("listening_provenance"),
+            "listening_passes": event.get("listening_passes"),
+            "route_decisions": event.get("route_decisions"),
             "perception_path": gateway_result.get("perception_path"),
             "source_contract": gateway_result.get("contract"),
         }
-        listening = record.setdefault("listening", {})
-        # The navigator owns this wrapper entry. Oída owns the embedded pass,
-        # whose gateway contract is pinned inside the payload; never write or
-        # rewrite another producer's namespace from Akousmata.
         namespace = "akousmata.listen_again"
-        counter = 2
-        while namespace in listening:
-            namespace = f"akousmata.listen_again.{counter}"
-            counter += 1
-        listening[namespace] = {
+        created_at = _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime())
+        listening_entry = {
             "contract": AKOUSMATA_CONTRACT,
-            "created_at": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
+            "created_at": created_at,
             "summary": compact.get("short_summary") or compact.get("title") or "fresh oída pass",
             "payload": compact,
         }
-        store.put(record)
-        wiki.ingest(store, akousma_id)
+
+        # A re-listening is a new record and an attributable revision. The
+        # earlier hearing remains intact; both records may reference the same
+        # content-addressed audio object.
+        import akousma as akousma_protocol
+
+        listening_id = str(event.get("id") or akousma_protocol.new_id("lst"))
+        routes = []
+        for route in event.get("routes") or []:
+            route_id = route.get("route_id") if isinstance(route, dict) else route
+            if isinstance(route_id, str) and route_id:
+                routes.append(route_id)
+        absence_items = []
+        for index, absence in enumerate(listening_context.get("honest_absences") or []):
+            if not isinstance(absence, dict):
+                continue
+            absence_items.append({
+                "id": str(absence.get("id") or akousma_protocol.new_id("abs")),
+                "kind": str(absence.get("kind") or "unavailable"),
+                "subject": str(absence.get("subject") or "unspecified evidence"),
+                "attributed_to": str(absence.get("attributed_to") or "oída listening boundary"),
+                "listening_id": listening_id,
+                **({"count": int(absence["count"])} if isinstance(absence.get("count"), int) else {}),
+                **({"note": str(absence["note"])} if absence.get("note") else {}),
+            })
+        producer_decisions = event.get("route_decisions") if isinstance(event.get("route_decisions"), list) else []
+        decision_items = []
+        for index, producer in enumerate(producer_decisions):
+            if not isinstance(producer, dict):
+                continue
+            authority = producer.get("authority") if isinstance(producer.get("authority"), dict) else {}
+            decision_items.append(akousma_protocol.route_decision(
+                str(producer.get("id") or f"decision-listen-again-{index + 1}"),
+                gate=str(producer.get("gate") or "input"),
+                outcome=str(producer.get("outcome") or "proceed"),
+                subject=str(producer.get("subject") or "explicit re-listening input"),
+                reason=str(producer.get("reason") or "Oída admitted the explicit re-listening request."),
+                actor=str(authority.get("actor") or "oida-gateway"),
+                decided_at=str(producer.get("decided_at") or created_at),
+                authority_mode=str(authority.get("mode") or "observe_only"),
+                listening_id=listening_id,
+                producer_contract="akouo/v0.9",
+                producer_decision_ref=str(producer.get("id") or "") or None,
+                covenant_ref=str(authority.get("covenant_ref") or "") or None,
+                granted_by=str(authority.get("granted_by") or "") or None,
+                requires_confirmation=bool(authority.get("requires_confirmation", False)),
+                reversible=bool(authority.get("reversible", True)),
+                note=str(producer.get("note") or "") or None,
+            ))
+        if not decision_items:
+            decision_items.append(akousma_protocol.route_decision(
+                "decision-listen-again-input",
+                gate="input",
+                outcome="proceed",
+                subject="explicit re-listening input",
+                reason="The user requested a fresh Oída pass for a retained audio reference.",
+                actor="akousmata-listen-again",
+                decided_at=created_at,
+                authority_mode="execute_scoped",
+                listening_id=listening_id,
+                producer_contract=AKOUSMATA_CONTRACT,
+                granted_by="explicit Listen again action",
+                requires_confirmation=False,
+                reversible=True,
+            ))
+        pass_ref = (
+            f"#/listening/{namespace}/payload/listening_passes/0"
+            if compact.get("listening_passes")
+            else None
+        )
+        provenance_ref = (
+            f"#/listening/{namespace}/payload/listening_provenance"
+            if compact.get("listening_provenance")
+            else None
+        )
+        auditum = akousma_protocol.auditum(
+            listenings=[{
+                "listening_id": listening_id,
+                "listener_id": str(event.get("listener_id") or gateway_result.get("perception_path") or "oida-gateway"),
+                "listener_type": "agent",
+                "created_at": created_at,
+                "report_namespace": namespace,
+                "contract": str(gateway_result.get("contract") or "oida/gateway/unknown"),
+                "context_ref": f"#/listening/{namespace}/payload/listening_context" if listening_context else None,
+                "apparatus_ref": f"#/listening/{namespace}/payload/apparatus" if compact.get("apparatus") else None,
+                "claim_set_ref": f"#/listening/{namespace}/payload/claims" if compact.get("claims") else None,
+                "route": routes,
+                "listening_pass_ref": pass_ref,
+                "listening_provenance_ref": provenance_ref,
+                "route_decision_refs": [item["decision_id"] for item in decision_items],
+            }],
+            honest_absences=absence_items,
+            route_decisions=decision_items,
+            revision={
+                "revision_id": akousma_protocol.new_id("rev"),
+                "revises_akousma_id": akousma_id,
+                "reason": "explicit listen-again pass through the OÍDA gateway",
+                "changes": [
+                    "fresh listening report",
+                    "fresh apparatus and context declaration",
+                    "fresh temporal pass, provenance, and route decisions",
+                ],
+                "created_at": created_at,
+            },
+        )
+        new_record = akousma_protocol.new_akousma(
+            audio=dict(record.get("audio") or {}),
+            originating_app="akousmata",
+            source_type="imported",
+            origin=str((record.get("provenance") or {}).get("origin") or "file"),
+            listening={namespace: listening_entry},
+            relations=[akousma_protocol.relation("same_source_as", akousma_id, note="explicit re-listening revision")],
+            tags=list(dict.fromkeys([*(record.get("tags") or []), "re-listening"])),
+            extensions={"akousmata.app": {"revision_trigger": "listen_again"}},
+            summary=listening_entry["summary"],
+            covenant=event.get("covenant") if isinstance(event.get("covenant"), dict) else None,
+            auditum=auditum,
+        )
+        source_provenance = record.get("provenance") if isinstance(record.get("provenance"), dict) else {}
+        for key in ("consent_status", "rights_note"):
+            if source_provenance.get(key) is not None:
+                new_record["provenance"][key] = source_provenance[key]
+        store.put(new_record)
+        wiki.ingest(store, new_record["akousma_id"])
         return {
             "namespace": namespace,
-            "listening": listening[namespace],
-            "record": record,
+            "listening": listening_entry,
+            "record": new_record,
+            "revision_of": akousma_id,
             "gateway": {"contract": gateway_result.get("contract"), "perception_path": gateway_result.get("perception_path")},
         }
     finally:

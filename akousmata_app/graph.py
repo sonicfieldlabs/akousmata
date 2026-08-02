@@ -91,6 +91,8 @@ def neighborhood(store, akousma_id: str, *, depth: int = 2, limit: int = 120) ->
 
 def _node(record: dict[str, Any]) -> dict[str, Any]:
     provenance = record.get("provenance") or {}
+    auditum = record.get("auditum") if isinstance(record.get("auditum"), dict) else {}
+    revision = auditum.get("revision") if isinstance(auditum.get("revision"), dict) else {}
     return {
         "id": record["akousma_id"],
         "label": summary_line(record)[:80],
@@ -98,5 +100,11 @@ def _node(record: dict[str, Any]) -> dict[str, Any]:
         "origin": provenance.get("origin"),
         "created_at": record.get("created_at"),
         "tags": list(record.get("tags") or []),
+        "listening_count": len(auditum.get("listenings") or []),
+        "disagreement_count": len(auditum.get("disagreements") or []),
+        "route_decision_count": len(auditum.get("route_decisions") or []),
+        "decision_only": not bool(auditum.get("listenings")) and bool(auditum.get("route_decisions")),
+        "ensemble_kind": (auditum.get("ensemble") or {}).get("kind") if isinstance(auditum.get("ensemble"), dict) else None,
+        "revision_of": revision.get("revises_akousma_id"),
         "missing": False,
     }

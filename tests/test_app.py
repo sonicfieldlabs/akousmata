@@ -92,6 +92,180 @@ class NavigatorTests(unittest.TestCase):
         data = self.client.get("/api/health").json()
         self.assertEqual(data["total"], 2)
         self.assertEqual(data["by_app"], {"oida": 1, "germ": 1})
+        self.assertEqual(data["accountable"], 0)
+        self.assertEqual(data["with_disagreement"], 0)
+        self.assertEqual(data["with_route_decisions"], 0)
+        self.assertEqual(data["forgetting_receipt_count"], 0)
+
+    def test_accountability_audit_and_filters(self):
+        initial = self.client.get("/api/audit/accountability").json()
+        self.assertEqual(initial["legacy"], 2)
+        self.assertEqual(initial["accountable"], 0)
+
+        manual = self.client.post("/api/records", json={
+            "summary": "a bell heard without a recording",
+            "notes": "one short decay",
+        }).json()["record"]
+        audit = self.client.get("/api/audit/accountability").json()
+        self.assertEqual(audit["accountable"], 1)
+        self.assertEqual(audit["legacy"], 2)
+        item = next(entry for entry in audit["items"] if entry["akousma_id"] == manual["akousma_id"])
+        self.assertEqual(item["listening_count"], 1)
+        self.assertEqual(item["honest_absence_count"], 1)
+        self.assertEqual(item["route_decision_count"], 1)
+        self.assertEqual(item["stop_decision_count"], 0)
+        self.assertEqual(item["issues"], [])
+
+        accountable = self.client.get("/api/records", params={"accountable": True}).json()["records"]
+        self.assertEqual([entry["akousma_id"] for entry in accountable], [manual["akousma_id"]])
+        legacy = self.client.get("/api/records", params={"accountable": False}).json()["records"]
+        self.assertEqual({entry["akousma_id"] for entry in legacy}, {self.parent_id, self.child_id})
+        decided = self.client.get("/api/records", params={"route_decision": True}).json()["records"]
+        self.assertEqual([entry["akousma_id"] for entry in decided], [manual["akousma_id"]])
+
+    def test_decision_only_memory_is_complete_without_claiming_a_hearing(self):
+        decision = akousma.route_decision(
+            "decision-quiet-hours",
+            gate="capture",
+            outcome="refuse",
+            subject="quiet-hours capture request",
+            reason="The adopted covenant closed the ear before capture.",
+            actor="oida-covenant-gate",
+            producer_contract="akouo/v0.9",
+            requires_confirmation=False,
+        )
+        decision["receipt"] = {
+            "created_at": "2026-07-27T12:00:00Z",
+            "actor": "oida-covenant-gate",
+            "result": "listening did not begin",
+            "recovery": "Revise the covenant before making a new request.",
+        }
+        auditum = akousma.auditum(
+            honest_absences=[{
+                "id": "absence-quiet-hours",
+                "kind": "refused",
+                "subject": "audio capture",
+                "attributed_to": "quiet-hours/1",
+                "listening_id": None,
+                "count": 1,
+            }],
+            route_decisions=[decision],
+        )
+        record = akousma.new_akousma(
+            audio=None,
+            subject="quiet-hours capture request",
+            originating_app="oida",
+            source_type="unknown",
+            origin="live-input",
+            summary="Listening was refused before capture.",
+            auditum=auditum,
+        )
+        store = akousma.AkousmataStore(self.tmp.name)
+        try:
+            store.put(record)
+        finally:
+            store.close()
+
+        card = next(
+            item for item in self.client.get("/api/records", params={"stop_decision": True}).json()["records"]
+            if item["akousma_id"] == record["akousma_id"]
+        )
+        self.assertTrue(card["decision_only"])
+        self.assertFalse(card["has_audio"])
+        self.assertEqual(card["listening_count"], 0)
+        self.assertEqual(card["route_decision_count"], 1)
+        self.assertEqual(card["stop_decision_count"], 1)
+        detail = self.client.get(f"/api/records/{record['akousma_id']}").json()
+        self.assertEqual(detail["accountability"]["status"], "accountable")
+        self.client.post(f"/api/wiki/ingest/{record['akousma_id']}")
+        page = self.client.get(f"/api/wiki/page/record/{record['akousma_id']}").json()["markdown"]
+        self.assertIn("route decision", page)
+        self.assertIn("listening did not begin", page)
+
+    def test_plural_listening_is_not_an_ear_swarm_without_an_ensemble(self):
+        created_at = "2026-07-27T12:00:00Z"
+        listenings = [
+            {
+                "listening_id": "listen-a",
+                "listener_id": "listener-a",
+                "listener_type": "human",
+                "created_at": created_at,
+                "report_namespace": "human.a",
+                "contract": "akouo/v0.9",
+                "route": ["/listen"],
+                "route_decision_refs": ["decision-a"],
+            },
+            {
+                "listening_id": "listen-b",
+                "listener_id": "listener-b",
+                "listener_type": "agent",
+                "created_at": created_at,
+                "report_namespace": "agent.b",
+                "contract": "akouo/v0.9",
+                "route": ["/listen"],
+                "route_decision_refs": ["decision-b"],
+            },
+        ]
+        decisions = [
+            akousma.route_decision(
+                f"decision-{suffix}",
+                gate="input",
+                outcome="proceed",
+                subject="shared listening object",
+                reason="The participant received the declared object.",
+                actor=f"listener-{suffix}",
+                listening_id=f"listen-{suffix}",
+                requires_confirmation=False,
+            )
+            for suffix in ("a", "b")
+        ]
+        record = akousma.new_akousma(
+            audio={"asset_id": "plural-object"},
+            originating_app="akousmata",
+            source_type="recorded",
+            origin="file",
+            listening={
+                "human.a": {"contract": "akouo/v0.9", "payload": {"summary": "first position"}},
+                "agent.b": {"contract": "akouo/v0.9", "payload": {"summary": "second position"}},
+            },
+            auditum=akousma.auditum(listenings=listenings, route_decisions=decisions),
+        )
+        store = akousma.AkousmataStore(self.tmp.name)
+        try:
+            store.put(record)
+        finally:
+            store.close()
+        first = self.client.get("/api/audit/accountability").json()
+        item = next(entry for entry in first["items"] if entry["akousma_id"] == record["akousma_id"])
+        self.assertTrue(item["plural_listening"])
+        self.assertFalse(item["ear_swarm"])
+
+        record["auditum"] = akousma.auditum(
+            listenings=listenings,
+            route_decisions=decisions,
+            ensemble={
+                "id": "ensemble-harbor",
+                "kind": "ear_swarm",
+                "listening_ids": ["listen-a", "listen-b"],
+                "influence_edges": [{
+                    "from_listening_id": "listen-a",
+                    "to_listening_id": "listen-b",
+                    "effect": "The first pass redirected attention to recurrence.",
+                }],
+                "permissions_preserved": True,
+                "disagreements_preserved": True,
+                "dissolution_rule": "The ensemble dissolves after this bounded comparison.",
+            },
+        )
+        store = akousma.AkousmataStore(self.tmp.name)
+        try:
+            store.put(record)
+        finally:
+            store.close()
+        second = self.client.get("/api/audit/accountability").json()
+        item = next(entry for entry in second["items"] if entry["akousma_id"] == record["akousma_id"])
+        self.assertTrue(item["ear_swarm"])
+        self.assertEqual(item["ensemble_kind"], "ear_swarm")
 
     def test_location_create_patch_and_map(self):
         created = self.client.post("/api/records", json={
@@ -223,11 +397,15 @@ class NavigatorTests(unittest.TestCase):
         self.assertEqual(entry["contract"], AKOUSMATA_CONTRACT)
         self.assertEqual(record["audio"]["duration_seconds"], 0.1)
         self.assertEqual(record["extensions"]["akousmata.app"]["listener"]["type"], "human")
+        self.assertEqual(record["auditum"]["contract"], "earworm/auditum/v2")
+        self.assertEqual(record["auditum"]["listenings"][0]["listener_type"], "human")
+        self.assertEqual(record["auditum"]["route_decisions"][0]["outcome"], "proceed")
         audio = self.client.get(f"/api/audio/{record['akousma_id']}")
         self.assertEqual(audio.status_code, 200)
         # wiki page written on ingest
         page = self.client.get(f"/api/wiki/page/record/{record['akousma_id']}").json()
         self.assertIn("rain on the skylight", page["markdown"])
+        self.assertIn("Accountable auditum", page["markdown"])
 
     def test_manual_memory_validates_summary_and_audio_upload(self):
         self.assertEqual(self.client.post("/api/records", json={"summary": "  "}).status_code, 400)
@@ -280,6 +458,9 @@ class NavigatorTests(unittest.TestCase):
         self.assertEqual(tags["harbor"], 2)
 
     def test_germ_link(self):
+        disabled = self.client.get(f"/api/germ-link/{self.parent_id}", params={"mode": "prompt"})
+        self.assertEqual(disabled.status_code, 409)
+        self.client.put("/api/settings", json={"germ_url": "http://127.0.0.1:5178"})
         data = self.client.get(f"/api/germ-link/{self.parent_id}", params={"mode": "prompt"}).json()
         self.assertIn(f"akousma={self.parent_id}", data["germ_url"])
         self.assertIn("mode=prompt", data["germ_url"])
@@ -297,13 +478,27 @@ class NavigatorTests(unittest.TestCase):
         self.assertEqual(lint["dangling_wikilinks"], [])
 
     def test_forget_leaves_absence(self):
-        self.client.post(f"/api/records/{self.child_id}/forget", json={"delete_audio": False})
+        response = self.client.post(
+            f"/api/records/{self.child_id}/forget",
+            json={"delete_audio": False, "actor": "listener-owner", "reason": "retention consent withdrawn"},
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        receipt = response.json()["receipt"]
+        self.assertEqual(receipt["contract"], "earworm/forgetting-receipt/v1")
+        self.assertEqual(receipt["akousma_id"], self.child_id)
+        self.assertEqual(receipt["actor"], "listener-owner")
+        self.assertNotIn("summary", receipt)
+        self.assertNotIn("audio", receipt)
         self.assertEqual(self.client.get(f"/api/records/{self.child_id}").status_code, 404)
+        receipts = self.client.get("/api/forgetting-receipts", params={"akousma_id": self.child_id}).json()
+        self.assertEqual(receipts["total"], 1)
+        self.assertEqual(receipts["receipts"][0]["receipt_id"], receipt["receipt_id"])
         lint = self.client.get("/api/wiki/lint").json()
         # the child's outgoing edges left with it; nothing dangles
         self.assertEqual(lint["store"]["dangling_relations"], [])
         self.assertEqual(lint["store"]["dangling_parents"], [])
         self.assertEqual(self.client.get("/api/health").json()["total"], 1)
+        self.assertEqual(self.client.get("/api/health").json()["forgetting_receipt_count"], 1)
 
     def test_research_deterministic(self):
         started = self.client.post("/api/research", json={"question": "what recurs at the harbor?", "max_steps": 2}).json()
@@ -480,15 +675,43 @@ class NavigatorTests(unittest.TestCase):
         self.assertEqual(response.status_code, 422)
         urlopen.assert_not_called()
 
-    def test_listen_again_files_gateway_result_on_same_record(self):
+    def test_listen_again_creates_an_additive_revision(self):
         record = self._manual_with_audio()
         gateway = {
-            "contract": "oida/gateway/v0.2",
+            "contract": "oida/gateway/v0.5",
             "perception_path": "oida_owned",
             "listening_event": {
                 "id": "evt_fresh",
                 "aggregate": {"title": "Fresh rain", "short_summary": "Rain and a distant bus.", "detailed_summary": "A new pass."},
                 "routes": [{"route_id": "field-listener"}],
+                "listening_provenance": {
+                    "listening_sources": [{"id": "source-audio", "kind": "audio"}],
+                    "cuts": [],
+                    "corpus_lineage": [],
+                },
+                "listening_passes": [{"id": "pass-fresh", "listener_id": "oida-local-listener"}],
+                "route_decisions": [{
+                    "id": "decision-fresh-input",
+                    "gate": "input",
+                    "outcome": "proceed",
+                    "subject": "retained audio reference",
+                    "reason": "The explicit re-listening input was available.",
+                    "decided_at": "2026-07-27T12:00:00Z",
+                    "authority": {
+                        "mode": "observe_only",
+                        "actor": "oida-gateway",
+                        "requires_confirmation": False,
+                        "reversible": True,
+                    },
+                }],
+                "listening_context": {
+                    "honest_absences": [{
+                        "kind": "not_retained",
+                        "subject": "raw audio",
+                        "attributed_to": "oída retention boundary",
+                        "count": 1,
+                    }],
+                },
             },
             "command_output": {
                 "claim_summary": {"heard": [{"statement": "Rain is audible."}]},
@@ -513,9 +736,56 @@ class NavigatorTests(unittest.TestCase):
         self.assertTrue(body["namespace"].startswith("akousmata.listen_again"))
         from akousmata_app import AKOUSMATA_CONTRACT
         self.assertEqual(body["listening"]["contract"], AKOUSMATA_CONTRACT)
-        self.assertEqual(body["listening"]["payload"]["source_contract"], "oida/gateway/v0.2")
+        self.assertEqual(body["listening"]["payload"]["source_contract"], "oida/gateway/v0.5")
         self.assertEqual(body["listening"]["payload"]["event_id"], "evt_fresh")
         self.assertEqual(body["listening"]["payload"]["claims"]["heard"][0]["statement"], "Rain is audible.")
+        self.assertNotEqual(body["record"]["akousma_id"], record["akousma_id"])
+        self.assertEqual(body["revision_of"], record["akousma_id"])
+        self.assertEqual(
+            body["record"]["auditum"]["revision"]["revises_akousma_id"],
+            record["akousma_id"],
+        )
+        self.assertEqual(body["record"]["auditum"]["disagreements"], [])
+        self.assertEqual(body["record"]["auditum"]["honest_absences"][0]["kind"], "not_retained")
+        self.assertEqual(body["record"]["auditum"]["contract"], "earworm/auditum/v2")
+        self.assertEqual(body["record"]["auditum"]["route_decisions"][0]["decision_id"], "decision-fresh-input")
+        self.assertTrue(body["record"]["auditum"]["listenings"][0]["listening_pass_ref"])
+        self.assertTrue(body["record"]["auditum"]["listenings"][0]["listening_provenance_ref"])
+        original = self.client.get(f"/api/records/{record['akousma_id']}").json()["record"]
+        self.assertNotIn("akousmata.listen_again", original["listening"])
+
+    def test_listen_again_does_not_turn_a_refusal_into_a_hearing(self):
+        record = self._manual_with_audio()
+        gateway = {
+            "contract": "oida/gateway/v0.5",
+            "status": "complete",
+            "outcome": "refused",
+            "listening_event": None,
+            "route_outcome": {
+                "contract": "oida/route-outcome/v0.1",
+                "subject": "file listening input",
+                "route_decision": {"outcome": "refuse"},
+            },
+        }
+
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self):
+                return json.dumps(gateway).encode("utf-8")
+
+        with patch("urllib.request.urlopen", return_value=Response()):
+            response = self.client.post(f"/api/records/{record['akousma_id']}/listen-again", json={})
+        self.assertEqual(response.status_code, 423, response.text)
+        detail = response.json()["detail"]
+        self.assertIn("no listening revision", detail["message"])
+        self.assertEqual(detail["route_outcome"]["contract"], "oida/route-outcome/v0.1")
+        stored = self.client.get("/api/records").json()["records"]
+        self.assertFalse(any(item.get("revision_of") == record["akousma_id"] for item in stored))
 
     def test_watcher_status_shape(self):
         status = self.client.get("/api/watcher").json()

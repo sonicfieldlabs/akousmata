@@ -119,6 +119,28 @@ async function loadRecords() {
       mark.title = `listened under ${record.covenant_id}`;
       line2.append(mark);
     }
+    if (record.auditum_contract) {
+      const mark = el("span", "minitag", record.decision_only ? `◇${record.route_decision_count || 0}` : `◎${record.listening_count || 0}`);
+      mark.title = record.decision_only
+        ? `${record.route_decision_count || 0} attributable pre-listening decision(s); no acoustic listening`
+        : `${record.listening_count || 0} attributable listening(s)`;
+      line2.append(mark);
+    }
+    if (record.stop_decision_count) {
+      const mark = el("span", "minitag", `⊣${record.stop_decision_count}`);
+      mark.title = "route stopped, withheld, deferred, or refused — open for the attributed reason";
+      line2.append(mark);
+    }
+    if (record.ensemble_kind) {
+      const mark = el("span", "minitag", record.ensemble_kind === "ear_swarm" ? "swarm" : "plural");
+      mark.title = `explicit ${record.ensemble_kind.replaceAll("_", " ")} declaration`;
+      line2.append(mark);
+    }
+    if (record.disagreement_count) {
+      const mark = el("span", "minitag", `≠${record.disagreement_count}`);
+      mark.title = "preserved disagreement — open the record to inspect each position";
+      line2.append(mark);
+    }
     if (record.parent_count) line2.append(el("span", "minitag", `⭡${record.parent_count}`));
     if (record.relation_count) line2.append(el("span", "minitag", `≈${record.relation_count}`));
     for (const tag of record.tags.slice(0, 4)) line2.append(el("span", "minitag", `#${tag}`));
@@ -322,6 +344,72 @@ function renderDetail(data) {
     pane.append(covSection);
   }
 
+  // Accountable auditum (spec v1.5). This is an index over producer-owned
+  // reports: attribution and disagreement are rendered, never synthesized.
+  const auditum = record.auditum && record.auditum.contract ? record.auditum : null;
+  if (auditum) {
+    const auditSection = el("div", "section");
+    auditSection.append(el("h2", "", "accountable auditum"));
+    const head = el("div", "row");
+    head.append(el("span", "badge", auditum.contract));
+    head.append(el("span", "note", `${(auditum.listenings || []).length} listening(s) · ${(auditum.route_decisions || []).length} route decision(s) · ${(auditum.disagreements || []).length} disagreement(s) · ${(auditum.honest_absences || []).length} attributed absence(s)`));
+    auditSection.append(head);
+    for (const listening of auditum.listenings || []) {
+      const box = el("div", "listening-entry");
+      const label = `${listening.listener_id || "?"} · ${listening.listener_type || "?"}`;
+      box.append(el("div", "ns", `${label} · ${listening.listening_id || "?"}`));
+      box.append(el("div", "", listening.report_namespace || "missing report namespace"));
+      if (listening.contract) box.append(el("div", "note", listening.contract));
+      if ((listening.route || []).length) box.append(el("div", "note", `route: ${listening.route.join(" → ")}`));
+      auditSection.append(box);
+    }
+    for (const disagreement of auditum.disagreements || []) {
+      const box = el("div", "listening-entry");
+      box.append(el("div", "ns", `≠ ${disagreement.subject || disagreement.id || "disagreement"} · ${disagreement.status || "?"}`));
+      for (const position of disagreement.positions || []) {
+        box.append(el("div", "", `${position.listening_id || "?"}: ${position.statement || "?"}${position.claim_category ? ` [${position.claim_category}]` : ""}`));
+      }
+      if (disagreement.resolution_note) box.append(el("div", "note", disagreement.resolution_note));
+      auditSection.append(box);
+    }
+    for (const absence of auditum.honest_absences || []) {
+      auditSection.append(el("div", "note", `absence · ${(absence.kind || "?").replaceAll("_", " ")} · ${absence.subject || "?"} — ${absence.attributed_to || "unattributed"}${absence.count != null ? ` ×${absence.count}` : ""}`));
+    }
+    for (const decision of auditum.route_decisions || []) {
+      const box = el("div", "listening-entry");
+      box.append(el("div", "ns", `decision · ${decision.gate || "?"} → ${(decision.outcome || "?").replaceAll("_", " ")}`));
+      box.append(el("div", "", decision.subject || "unnamed subject"));
+      box.append(el("div", "note", `${decision.reason || "reason not recorded"} — ${(decision.authority || {}).actor || "unattributed actor"}`));
+      if (decision.receipt) {
+        box.append(el("div", "note", `receipt · ${decision.receipt.result || "recorded"}${decision.receipt.recovery ? ` · ${decision.receipt.recovery}` : ""}`));
+      }
+      auditSection.append(box);
+    }
+    for (const action of auditum.actions || []) {
+      const authority = action.authority || {};
+      auditSection.append(el("div", "note", `action · ${action.status || "?"} · ${action.proposal || "?"} — authority ${authority.mode || "missing"}${(authority.scopes || []).length ? ` (${authority.scopes.join(", ")})` : ""}`));
+    }
+    if (auditum.ensemble) {
+      const ensemble = auditum.ensemble;
+      const box = el("div", "listening-entry");
+      box.append(el("div", "ns", `ensemble · ${(ensemble.kind || "?").replaceAll("_", " ")}`));
+      box.append(el("div", "note", `${(ensemble.listening_ids || []).length} attributable listenings · ${(ensemble.influence_edges || []).length} influence edge(s)`));
+      box.append(el("div", "note", `permissions ${ensemble.permissions_preserved ? "preserved" : "not preserved"} · disagreements ${ensemble.disagreements_preserved ? "preserved" : "not preserved"}`));
+      if (ensemble.dissolution_rule) box.append(el("div", "note", `dissolution: ${ensemble.dissolution_rule}`));
+      auditSection.append(box);
+    }
+    if (auditum.revision && auditum.revision.revises_akousma_id) {
+      const revision = el("div", "", "revision of ");
+      revision.append(linkTo(auditum.revision.revises_akousma_id, auditum.revision.revises_akousma_id, false));
+      if (auditum.revision.reason) revision.append(el("span", "note", ` — ${auditum.revision.reason}`));
+      auditSection.append(revision);
+    }
+    if ((data.accountability?.issues || []).length) {
+      for (const issue of data.accountability.issues) auditSection.append(el("div", "badge blocked", issue));
+    }
+    pane.append(auditSection);
+  }
+
   // listenings
   const listening = record.listening || {};
   if (Object.keys(listening).length) {
@@ -352,7 +440,7 @@ function renderDetail(data) {
   // preserves them; showing them keeps the record honest about what it holds)
   const KNOWN_TOP = new Set([
     "akousma_id", "schema_version", "created_at", "session_id", "audio", "provenance",
-    "listening", "lineage", "tags", "annotations", "extensions", "summary", "location", "capture", "covenant",
+    "listening", "lineage", "tags", "annotations", "extensions", "summary", "location", "capture", "covenant", "auditum",
   ]);
   const extraKeys = Object.keys(record).filter((key) => !KNOWN_TOP.has(key)).sort();
   if (extraKeys.length) {
@@ -488,13 +576,15 @@ function renderDetail(data) {
 
   // actions
   const actions = el("div", "section row");
-  for (const mode of ["sound", "prompt", "lineage"]) {
-    const button = el("button", "btn", `germ: ${mode}`);
-    button.addEventListener("click", async () => {
-      const data = await api(`/api/germ-link/${record.akousma_id}?mode=${mode}`);
-      window.open(data.germ_url, "_blank");
-    });
-    actions.append(button);
+  if (state.settings?.germ_url) {
+    for (const mode of ["sound", "prompt", "lineage"]) {
+      const button = el("button", "btn", `germ: ${mode}`);
+      button.addEventListener("click", async () => {
+        const data = await api(`/api/germ-link/${record.akousma_id}?mode=${mode}`);
+        window.open(data.germ_url, "_blank");
+      });
+      actions.append(button);
+    }
   }
   const graphButton = el("button", "btn", "graph here");
   graphButton.addEventListener("click", () => {
@@ -511,9 +601,15 @@ function renderDetail(data) {
   const forget = el("button", "btn danger", "forget…");
   forget.addEventListener("click", async () => {
     if (!confirm("Forget this memory? The record is removed; links pointing at it remain as absence.")) return;
-    await api(`/api/records/${record.akousma_id}/forget`, { method: "POST", body: JSON.stringify({ delete_audio: false }) });
+    const reason = prompt("Reason for forgetting (kept in the content-free receipt):", "explicit forget request");
+    if (reason === null || !reason.trim()) return;
+    const result = await api(`/api/records/${record.akousma_id}/forget`, {
+      method: "POST",
+      body: JSON.stringify({ delete_audio: false, actor: "human-operator", reason: reason.trim() }),
+    });
     state.selected = null;
     $("rec-detail").replaceChildren(el("div", "empty", "forgotten"));
+    toast(`forgotten · receipt ${result.receipt.receipt_id}`);
     loadRecords();
     loadTags();
   });
@@ -541,8 +637,8 @@ function renderDetail(data) {
           method: "POST",
           body: JSON.stringify({ preset: presetInput.value.trim() || "basic" }),
         });
-        toast(`fresh listening filed as ${result.namespace}`);
-        selectRecord(record.akousma_id);
+        toast(`fresh listening filed as revision ${result.record.akousma_id}`);
+        selectRecord(result.record.akousma_id);
       } catch (error) {
         toast(error.message);
         againButton.disabled = false;
@@ -863,7 +959,43 @@ $("d-save").addEventListener("click", async () => {
 /* ── consent audit + export packs ─────────────────────────────────────── */
 
 async function loadAudit() {
-  const data = await api("/api/audit/consent");
+  const [data, accountability] = await Promise.all([
+    api("/api/audit/consent"),
+    api("/api/audit/accountability"),
+  ]);
+  $("accountability-totals").textContent = `${accountability.accountable} accountable · ${accountability.legacy} legacy · ${accountability.with_issues} with issues · ${accountability.with_route_decisions} with decisions · ${accountability.decision_only} decision only · ${accountability.plural_listenings} plural · ${accountability.ear_swarms} declared ear swarms · ${accountability.with_disagreement} with disagreement · ${accountability.revisions} revisions`;
+  const accountabilityWrap = $("accountability-list");
+  accountabilityWrap.replaceChildren();
+  for (const item of accountability.items) {
+    const row = el("div", "audit-row");
+    const anchor = el("span", "link", item.summary);
+    anchor.addEventListener("click", () => {
+      document.querySelector('[data-tab="library"]').click();
+      selectRecord(item.akousma_id);
+    });
+    row.append(el("span", `badge ${item.status === "issues" ? "blocked" : item.status === "accountable" ? "ok" : ""}`, item.status), anchor);
+    if (item.listening_count) row.append(el("span", "note", `${item.listening_count} listening(s) · ${item.distinct_listener_count} listener(s)`));
+    if (item.disagreement_count) row.append(el("span", "note", `≠ ${item.disagreement_count}`));
+    if (item.route_decision_count) row.append(el("span", "note", `${item.route_decision_count} decision(s) · ${item.stop_decision_count} stop(s)`));
+    if (item.decision_only) row.append(el("span", "badge", "decision only"));
+    if (item.ensemble_kind) row.append(el("span", "badge", item.ensemble_kind.replaceAll("_", " ")));
+    if (item.revision_of) row.append(el("span", "note", "revision"));
+    for (const issue of item.issues || []) row.append(el("span", "badge blocked", issue));
+    accountabilityWrap.append(row);
+  }
+  const receipts = $("forgetting-list");
+  receipts.replaceChildren();
+  $("forgetting-totals").textContent = `${accountability.forgetting_receipt_count} content-free receipt(s)`;
+  for (const receipt of accountability.forgetting_receipts || []) {
+    const row = el("div", "audit-row");
+    row.append(
+      el("span", "badge", "forgotten"),
+      el("span", "link", receipt.akousma_id),
+      el("span", "note", `${receipt.created_at} · ${receipt.actor} · ${receipt.reason}`),
+      el("span", "note", receipt.audio_deleted ? "audio deleted" : receipt.shared_audio_preserved ? "shared audio preserved" : "record deleted"),
+    );
+    receipts.append(row);
+  }
   const totals = Object.entries(data.totals).map(([status, count]) => `${status.replaceAll("_", " ")} ${count}`).join(" · ");
   $("a-totals").textContent = `${data.total} memories · ${data.exportable} exportable · ${totals}`;
   const wrap = $("audit-list");
