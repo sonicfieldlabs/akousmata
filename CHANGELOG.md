@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.1 — Additive account integrity
+
+- Raised the canonical store floor to `akousma >= 0.6.1`, which prevents
+  silent replacement of listening/auditum accounts and requires fresh,
+  existing revision targets.
+- Kept navigator-owned metadata, consent, and kinship edits working under the
+  protected store boundary.
+- Expanded environment-file ignore coverage and exercised ear-swarm changes
+  as additive revisions rather than in-place rewrites.
+
 ## 0.6.0 — Decisions, Absence, and Accountable Forgetting
 
 - Added first-class akousma v1.5 / Earworm auditum v2 rendering across cards,

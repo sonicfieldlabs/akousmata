@@ -14,7 +14,7 @@ kinship ("belongs with"): variants, recurrences, series, responses. A heard
 memory carries attributable listenings; a gate that closed before hearing can
 instead carry a decision-only auditum without pretending that sound occurred.
 
-Current release: `0.6.0`.
+Current release: `0.6.1`.
 
 ## What it is
 
@@ -108,9 +108,9 @@ that protocol, not a fork of it.
 
 | Component | Version / contract | Relationship |
 | --- | --- | --- |
-| [Earworm](https://github.com/sonicfieldlabs/earworm) | `akousma 0.6.0` / spec v1.5 | Canonical store and addressable auditum contract: decisions, lineage, attributable passes, disagreement, absence, forgetting receipts, ensembles, authority, and revision. |
+| [Earworm](https://github.com/sonicfieldlabs/earworm) | `akousma 0.6.1` / spec v1.5 | Canonical store and addressable auditum contract: decisions, lineage, attributable disagreement resolution, absence, forgetting receipts, ensembles, authority, and mechanically additive revision. |
 | [AKOÚŌ](https://github.com/sonicfieldlabs/akouo) | `akouo/v0.9` | Owns claim taxonomy, provenance, temporal passes, route decisions, corpus disclosure, and situated context rendered by the navigator. |
-| [OÍDA](https://github.com/sonicfieldlabs/oida) | 0.9.1 / `oida/gateway/v0.5` | Writes listening events v0.3 and decision-only route outcomes; produces additive re-listening revisions and embeds the navigator at `/library/`. |
+| [OÍDA](https://github.com/sonicfieldlabs/oida) | 0.9.2 / `oida/gateway/v0.5` | Writes listening events v0.3 and decision-only route outcomes; produces additive re-listening revisions and embeds the navigator at `/library/`. |
 | [GERM](https://github.com/sonicfieldlabs/germ) | 0.3.2 (optional) | Receives explicit sound, prompt, and lineage handoffs when separately configured. |
 | [Algophony](https://github.com/sonicfieldlabs/algophony) | 0.5.1 | Adds batch evaluation stamps and comparison relations. |
 | [ORAM](https://github.com/sonicfieldlabs/oram) | 0.4.1 | ORAM exports can enter the store through OÍDA or another akousma producer; ORAM is not a direct store writer. |

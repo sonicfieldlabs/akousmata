@@ -240,7 +240,7 @@ class NavigatorTests(unittest.TestCase):
         self.assertTrue(item["plural_listening"])
         self.assertFalse(item["ear_swarm"])
 
-        record["auditum"] = akousma.auditum(
+        swarm_auditum = akousma.auditum(
             listenings=listenings,
             route_decisions=decisions,
             ensemble={
@@ -256,14 +256,32 @@ class NavigatorTests(unittest.TestCase):
                 "disagreements_preserved": True,
                 "dissolution_rule": "The ensemble dissolves after this bounded comparison.",
             },
+            revision={
+                "revision_id": akousma.new_id("rev"),
+                "revises_akousma_id": record["akousma_id"],
+                "reason": "the participants later declared attributable influence",
+                "changes": ["explicit ear-swarm ensemble declaration"],
+                "created_at": created_at,
+            },
+        )
+        swarm_record = akousma.new_akousma(
+            audio=dict(record["audio"]),
+            originating_app="akousmata",
+            source_type="recorded",
+            origin="file",
+            listening=dict(record["listening"]),
+            relations=[akousma.relation("same_source_as", record["akousma_id"])],
+            auditum=swarm_auditum,
         )
         store = akousma.AkousmataStore(self.tmp.name)
         try:
-            store.put(record)
+            store.put(swarm_record)
         finally:
             store.close()
         second = self.client.get("/api/audit/accountability").json()
-        item = next(entry for entry in second["items"] if entry["akousma_id"] == record["akousma_id"])
+        original = next(entry for entry in second["items"] if entry["akousma_id"] == record["akousma_id"])
+        self.assertFalse(original["ear_swarm"])
+        item = next(entry for entry in second["items"] if entry["akousma_id"] == swarm_record["akousma_id"])
         self.assertTrue(item["ear_swarm"])
         self.assertEqual(item["ensemble_kind"], "ear_swarm")
 
