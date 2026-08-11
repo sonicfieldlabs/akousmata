@@ -24,8 +24,8 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from akousmata_app import AKOUSMATA_CONTRACT, __version__, constellations, exports, graph, records, research, similar, watcher, wiki
 from akousmata_app.llm import validate_http_url
 from akousmata_app.paths import open_store, store_root
-from akousmata_app.settings import load as load_settings
-from akousmata_app.settings import public_view, save as save_settings
+from akousmata_app.settings import ensure_human_profile, load as load_settings
+from akousmata_app.settings import public_view, save as save_settings, update_human_profile
 
 _PACKAGED_STATIC_DIR = Path(__file__).resolve().parent / "static"
 STATIC_DIR = _PACKAGED_STATIC_DIR if _PACKAGED_STATIC_DIR.exists() else Path(__file__).resolve().parents[1] / "static"
@@ -62,9 +62,36 @@ class ManualMemory(BaseModel):
     parent_akousma_ids: list[str] = Field(default_factory=list)
     relations: list[dict[str, Any]] = Field(default_factory=list)
     location: dict[str, Any] | None = None
+    heard: bool = False
+    response_to: str | None = None
+    same_source_as: str | None = None
+    same_source_verified: bool = False
+
+
+class HumanRevision(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    summary: str
+    notes: str = ""
+    tags: list[str] = Field(default_factory=list)
+    heard_at: str | None = None
+    place: str | None = None
+    kind: str = "heard_live"
+    location: dict[str, Any] | None = None
+    heard: bool
+    reason: str
+
+
+class HumanProfilePatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    display_name: str = ""
+    privacy: str = "private"
 
 
 class RecordPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     tags: list[str] | None = None
     annotations: dict[str, Any] | None = None
     summary: str | None = None
@@ -75,6 +102,7 @@ class RelationBody(BaseModel):
     type: str
     target_akousma_id: str
     note: str | None = None
+    same_source_verified: bool = False
 
 
 class ForgetBody(BaseModel):
@@ -95,6 +123,7 @@ class SettingsPatch(BaseModel):
     oida_url: str | None = None
     llm: dict[str, Any] | None = None
     watcher: dict[str, Any] | None = None
+    human_profile: dict[str, Any] | None = None
 
 
 def _store():
@@ -125,6 +154,25 @@ def health() -> dict[str, Any]:
         store.close()
 
 
+@app.get("/api/human-profile")
+def human_profile() -> dict[str, Any]:
+    profile = ensure_human_profile()
+    return {
+        **profile,
+        "local_only": True,
+        "note": "The listener id is a local ownership handle, not a global identity or authentication token.",
+    }
+
+
+@app.put("/api/human-profile")
+def put_human_profile(body: HumanProfilePatch) -> dict[str, Any]:
+    try:
+        profile = update_human_profile(display_name=body.display_name, privacy=body.privacy)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {**profile, "local_only": True}
+
+
 @app.get("/api/records")
 def list_records(
     app_filter: str | None = None,
@@ -139,34 +187,84 @@ def list_records(
     disagreement: bool | None = None,
     route_decision: bool | None = None,
     stop_decision: bool | None = None,
+    listener_type: str | None = None,
+    record_class: str | None = None,
+    revision_of: str | None = None,
     limit: int = 200,
 ) -> dict[str, Any]:
     store = _store()
     try:
-        found = records.list_records(
-            store,
-            app=app_filter,
-            origin=origin,
-            source_type=source_type,
-            tag=tag,
-            text=text,
-            since=since,
-            until=until,
-            covenant_id=covenant,
-            has_auditum=accountable,
-            has_disagreement=disagreement,
-            has_route_decision=route_decision,
-            has_stop_decision=stop_decision,
-            limit=max(1, min(limit, 1000)),
-        )
-        return {"records": [records.card(r) for r in found]}
+        try:
+            found = records.list_records(
+                store,
+                app=app_filter,
+                origin=origin,
+                source_type=source_type,
+                tag=tag,
+                text=text,
+                since=since,
+                until=until,
+                covenant_id=covenant,
+                has_auditum=accountable,
+                has_disagreement=disagreement,
+                has_route_decision=route_decision,
+                has_stop_decision=stop_decision,
+                listener_type=listener_type,
+                record_class_filter=record_class,
+                revision_of=revision_of,
+                limit=max(1, min(limit, 1000)),
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        profile = ensure_human_profile()
+        return {"records": records.cards(store, found, local_listener_id=profile["listener_id"])}
     finally:
         store.close()
 
 
+@app.post("/api/human-records")
 @app.post("/api/records")
 def create_record(body: ManualMemory) -> dict[str, Any]:
     return _create_manual_record(body)
+
+
+def _human_relations(store, body: ManualMemory) -> list[dict[str, Any]]:
+    if body.parent_akousma_ids:
+        raise HTTPException(
+            status_code=400,
+            detail="human/machine links are kinship, not causal parents; use response_to or verified same_source_as",
+        )
+    requested = [dict(item) for item in body.relations]
+    if body.response_to:
+        requested.append({
+            "type": "response_to",
+            "target_akousma_id": body.response_to,
+            "note": "local human response to an attributable machine listening",
+        })
+    if body.same_source_as:
+        requested.append({
+            "type": "same_source_as",
+            "target_akousma_id": body.same_source_as,
+            "note": "same source explicitly verified by the local human",
+        })
+    out: list[dict[str, Any]] = []
+    for item in requested:
+        rel_type = item.get("type")
+        target_id = item.get("target_akousma_id")
+        if not isinstance(rel_type, str) or not isinstance(target_id, str) or not target_id:
+            raise HTTPException(status_code=400, detail="each relation needs type and target_akousma_id")
+        target = store.get(target_id)
+        if target is None:
+            raise HTTPException(status_code=404, detail=f"akousma not found: {target_id}")
+        if rel_type in {"response_to", "same_source_as"} and records.record_class(target) not in {"agent", "hybrid"}:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{rel_type} target must contain an attributable agent or hybrid listening",
+            )
+        if rel_type == "same_source_as" and not body.same_source_verified:
+            raise HTTPException(status_code=400, detail="same_source_as requires explicit source verification")
+        out.append(item)
+    return out
 
 
 def _create_manual_record(
@@ -180,9 +278,10 @@ def _create_manual_record(
     store = _store()
     try:
         try:
+            relation_items = _human_relations(store, body)
             record = records.create_manual_memory(
                 store,
-                summary=body.summary,
+                summary=body.summary.strip(),
                 notes=body.notes,
                 tags=body.tags,
                 heard_at=body.heard_at,
@@ -190,9 +289,11 @@ def _create_manual_record(
                 kind=body.kind,
                 audio_data=audio_data,
                 audio_extension=audio_extension,
-                parent_akousma_ids=body.parent_akousma_ids,
-                relations=body.relations,
+                parent_akousma_ids=[],
+                relations=relation_items,
                 location=body.location,
+                heard=body.heard,
+                human_profile=ensure_human_profile(),
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -202,6 +303,7 @@ def _create_manual_record(
         store.close()
 
 
+@app.post("/api/human-records/import")
 @app.post("/api/records/import")
 async def import_record(
     metadata: Annotated[str, Form()],
@@ -234,7 +336,7 @@ async def import_record(
 def record_detail(akousma_id: str) -> dict[str, Any]:
     store = _store()
     try:
-        found = records.detail(store, akousma_id)
+        found = records.detail(store, akousma_id, local_listener_id=ensure_human_profile()["listener_id"])
         if found is None:
             raise HTTPException(status_code=404, detail=f"akousma not found: {akousma_id}")
         return found
@@ -242,6 +344,44 @@ def record_detail(akousma_id: str) -> dict[str, Any]:
         store.close()
 
 
+@app.post("/api/human-records/{akousma_id}/revisions")
+def revise_human_record(akousma_id: str, body: HumanRevision) -> dict[str, Any]:
+    if not body.summary.strip():
+        raise HTTPException(status_code=400, detail="summary is required")
+    store = _store()
+    try:
+        try:
+            record = records.revise_human_record(
+                store,
+                akousma_id,
+                human_profile=ensure_human_profile(),
+                summary=body.summary.strip(),
+                notes=body.notes,
+                tags=body.tags,
+                heard_at=body.heard_at,
+                place=body.place,
+                kind=body.kind,
+                location=body.location,
+                heard=body.heard,
+                reason=body.reason,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        wiki.ingest(store, record["akousma_id"])
+        return {
+            "record": record,
+            "revises_akousma_id": akousma_id,
+            "revision": records.revision_lifecycle(store, record["akousma_id"]),
+        }
+    finally:
+        store.close()
+
+
+@app.patch("/api/records/{akousma_id}/curation")
 @app.patch("/api/records/{akousma_id}")
 def patch_record(akousma_id: str, body: RecordPatch) -> dict[str, Any]:
     patch = {k: v for k, v in body.model_dump().items() if v is not None}
@@ -254,7 +394,7 @@ def patch_record(akousma_id: str, body: RecordPatch) -> dict[str, Any]:
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         wiki.ingest(store, akousma_id)
-        return {"record": record}
+        return {"record": record, "operation": "library_curation"}
     finally:
         store.close()
 
@@ -264,9 +404,19 @@ def add_relation(akousma_id: str, body: RelationBody) -> dict[str, Any]:
     store = _store()
     try:
         try:
-            record = records.add_relation(store, akousma_id, body.type, body.target_akousma_id, body.note)
+            record = records.add_relation(
+                store,
+                akousma_id,
+                body.type,
+                body.target_akousma_id,
+                body.note,
+                local_listener_id=ensure_human_profile()["listener_id"],
+                same_source_verified=body.same_source_verified,
+            )
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         wiki.ingest(store, akousma_id)
@@ -619,6 +769,7 @@ class DiaryBody(BaseModel):
     tags: list[str] = Field(default_factory=list)
     place: str | None = None
     location: dict[str, Any] | None = None
+    heard: bool = False
 
 
 @app.post("/api/diary")
@@ -637,6 +788,8 @@ def diary_entry(body: DiaryBody) -> dict[str, Any]:
             place=body.place,
             kind="diary",
             location=body.location,
+            heard=body.heard,
+            human_profile=ensure_human_profile(),
         )
         wiki.ingest(store, record["akousma_id"])
         day = str(record.get("created_at") or "")[:10]
@@ -986,6 +1139,7 @@ def watcher_run(lint: bool = True) -> dict[str, Any]:
 
 @app.get("/api/settings")
 def get_settings() -> dict[str, Any]:
+    ensure_human_profile()
     return public_view()
 
 
@@ -994,10 +1148,20 @@ def put_settings(body: SettingsPatch) -> dict[str, Any]:
     import os
 
     patch = {k: v for k, v in body.model_dump().items() if v is not None}
+    profile_patch = patch.pop("human_profile", None)
+    if isinstance(profile_patch, dict):
+        try:
+            update_human_profile(
+                display_name=str(profile_patch.get("display_name") or ""),
+                privacy=str(profile_patch.get("privacy") or "private"),
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     llm = patch.get("llm")
     if isinstance(llm, dict) and str(llm.get("api_key") or "").startswith("•"):
         llm.pop("api_key")  # masked value round-tripped from the UI: keep the stored key
     saved = save_settings(patch)
+    saved["human_profile"] = ensure_human_profile()
     watcher_settings = saved.get("watcher") or {}
     if os.getenv("AKOUSMATA_WATCHER", "1") != "0" and watcher_settings.get("enabled", True):
         watcher.restart(

@@ -8,6 +8,8 @@ Listening Stack follows.
 from __future__ import annotations
 
 import io
+import json
+import sqlite3
 import time
 import wave
 from hashlib import sha256
@@ -20,6 +22,8 @@ from akousmata_app.paths import ensure_pyakousma
 EDITABLE_FIELDS = {"tags", "annotations", "summary", "location"}
 AUDIO_EXTENSIONS = {"aif", "aiff", "flac", "m4a", "mp3", "ogg", "opus", "wav", "webm"}
 MAX_MANUAL_AUDIO_BYTES = 100 * 1024 * 1024
+RECORD_CLASSES = {"human", "agent", "hybrid", "plural_other", "decision_only", "legacy"}
+MACHINE_LISTENER_TYPE = "agent"
 
 # Meteorological convention, not an ecological claim (see /api/timeline docs).
 _SEASON_BY_MONTH = {
@@ -41,6 +45,135 @@ def _utc_now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
+def listener_types(record: dict[str, Any]) -> list[str]:
+    """Exact listener types declared by the auditum, never namespace guesses."""
+    lib = _akousma()
+    if hasattr(lib, "listener_types"):
+        return list(lib.listener_types(record))
+    block = record.get("auditum")
+    listenings = block.get("listenings") if isinstance(block, dict) else None
+    if not isinstance(listenings, list):
+        return []
+    return sorted({
+        str(item["listener_type"])
+        for item in listenings
+        if isinstance(item, dict)
+        and isinstance(item.get("listener_type"), str)
+        and item["listener_type"]
+    })
+
+
+def record_class(record: dict[str, Any]) -> str:
+    """Classify a record while retaining every exact listener type.
+
+    ``hybrid`` is reserved for an explicit hybrid listener or a human+agent
+    account. Community, institution, sensor, habitat, animal, ensemble, and
+    other listenings stay visible in ``listener_types`` and use the
+    ``plural_other`` navigation bucket rather than being called machines.
+    """
+    lib = _akousma()
+    if hasattr(lib, "record_class"):
+        return str(lib.record_class(record))
+    block = record.get("auditum")
+    if not isinstance(block, dict):
+        return "legacy"
+    types = set(listener_types(record))
+    decisions = block.get("route_decisions")
+    if not types and isinstance(decisions, list) and decisions:
+        return "decision_only"
+    if types == {"human"}:
+        return "human"
+    if types == {MACHINE_LISTENER_TYPE}:
+        return "agent"
+    if types == {"hybrid"} or types == {"human", MACHINE_LISTENER_TYPE}:
+        return "hybrid"
+    if types:
+        return "plural_other"
+    return "legacy"
+
+
+def _human_record_meta(record: dict[str, Any]) -> dict[str, Any]:
+    extensions = record.get("extensions")
+    app = extensions.get("akousmata.app") if isinstance(extensions, dict) else None
+    meta = app.get("human_record") if isinstance(app, dict) else None
+    return meta if isinstance(meta, dict) else {}
+
+
+def owned_human_record(record: dict[str, Any], listener_id: str | None) -> bool:
+    meta = _human_record_meta(record)
+    return bool(listener_id and meta.get("owner_listener_id") == listener_id)
+
+
+def _revision_index(store) -> dict[str, Any]:
+    parent: dict[str, str] = {}
+    children: dict[str, list[str]] = {}
+    try:
+        rows = store.conn.execute("SELECT akousma_id, revision_of FROM akousmata").fetchall()
+        pairs = [(row["akousma_id"], row["revision_of"]) for row in rows]
+    except sqlite3.OperationalError:  # py-akousma < 0.7 compatibility while a store migrates
+        rows = store.conn.execute("SELECT akousma_id, record FROM akousmata").fetchall()
+        pairs = []
+        for row in rows:
+            record = json.loads(row["record"])
+            revision = (record.get("auditum") or {}).get("revision")
+            target = revision.get("revises_akousma_id") if isinstance(revision, dict) else None
+            pairs.append((row["akousma_id"], target))
+    for rid, target in pairs:
+        if isinstance(target, str) and target:
+            parent[rid] = target
+            children.setdefault(target, []).append(rid)
+    return {"parent": parent, "children": children}
+
+
+def _lifecycle_from_index(index: dict[str, Any], akousma_id: str) -> dict[str, Any]:
+    parent = index["parent"]
+    children = index["children"]
+    root = akousma_id
+    seen: set[str] = set()
+    while root in parent and root not in seen:
+        seen.add(root)
+        root = parent[root]
+
+    member_ids: set[str] = set()
+    stack = [root]
+    while stack:
+        current = stack.pop()
+        if current in member_ids:
+            continue
+        member_ids.add(current)
+        stack.extend(children.get(current, []))
+    heads = sorted(rid for rid in member_ids if not children.get(rid))
+    return {
+        "root_id": root,
+        "revision_of": parent.get(akousma_id),
+        "member_ids": member_ids,
+        "head_ids": heads,
+        "is_head": akousma_id in heads,
+    }
+
+
+def revision_lifecycle(store, akousma_id: str) -> dict[str, Any]:
+    state = _lifecycle_from_index(_revision_index(store), akousma_id)
+    history = [store.get(rid) for rid in state.pop("member_ids")]
+    state["history"] = sorted(
+        (record for record in history if record is not None),
+        key=lambda item: (str(item.get("created_at") or ""), item["akousma_id"]),
+    )
+    return state
+
+
+def cards(store, found: list[dict[str, Any]], *, local_listener_id: str | None = None) -> list[dict[str, Any]]:
+    index = _revision_index(store)
+    return [
+        card(
+            record,
+            lifecycle=_lifecycle_from_index(index, record["akousma_id"]),
+            local_listener_id=local_listener_id,
+        )
+        for record in found
+    ]
+
+
 def list_records(
     store,
     *,
@@ -56,6 +189,9 @@ def list_records(
     has_disagreement: bool | None = None,
     has_route_decision: bool | None = None,
     has_stop_decision: bool | None = None,
+    listener_type: str | None = None,
+    record_class_filter: str | None = None,
+    revision_of: str | None = None,
     limit: int = 200,
 ) -> list[dict[str, Any]]:
     kwargs: dict[str, Any] = {}
@@ -70,7 +206,15 @@ def list_records(
         kwargs["has_route_decision"] = has_route_decision
     if has_stop_decision is not None:
         kwargs["has_stop_decision"] = has_stop_decision
-    return store.query(
+    if record_class_filter is not None and record_class_filter not in RECORD_CLASSES:
+        raise ValueError(f"record_class must be one of {sorted(RECORD_CLASSES)}")
+    if listener_type is not None:
+        kwargs["listener_type"] = listener_type
+    if record_class_filter is not None:
+        kwargs["record_class"] = record_class_filter
+    if revision_of is not None:
+        kwargs["revision_of"] = revision_of
+    found = store.query(
         originating_app=app,
         origin=origin,
         source_type=source_type,
@@ -81,6 +225,7 @@ def list_records(
         limit=limit,
         **kwargs,
     )
+    return found
 
 
 def summary_line(record: dict[str, Any]) -> str:
@@ -107,12 +252,26 @@ def summary_line(record: dict[str, Any]) -> str:
     return ", ".join(str(t) for t in record.get("tags") or []) or "(no summary)"
 
 
-def card(record: dict[str, Any]) -> dict[str, Any]:
+def card(
+    record: dict[str, Any],
+    *,
+    lifecycle: dict[str, Any] | None = None,
+    local_listener_id: str | None = None,
+) -> dict[str, Any]:
     """Compact list representation."""
     provenance = record.get("provenance") or {}
     audio = record.get("audio") or {}
     lineage = record.get("lineage") or {}
     accountability = auditum_summary(record)
+    lifecycle = lifecycle or {
+        "root_id": None,
+        "revision_of": accountability["revision_of"],
+        "head_ids": [],
+        "is_head": None,
+    }
+    owned = owned_human_record(record, local_listener_id)
+    exact_listener_types = listener_types(record)
+    classification = record_class(record)
     return {
         "akousma_id": record["akousma_id"],
         "created_at": record.get("created_at"),
@@ -135,14 +294,23 @@ def card(record: dict[str, Any]) -> dict[str, Any]:
         "stop_decision_count": accountability["stop_decision_count"],
         "decision_only": accountability["decision_only"],
         "ensemble_kind": accountability["ensemble_kind"],
-        "revision_of": accountability["revision_of"],
+        "revision_of": lifecycle.get("revision_of") or accountability["revision_of"],
+        "revision_root": lifecycle.get("root_id"),
+        "revision_head_ids": list(lifecycle.get("head_ids") or []),
+        "is_revision_head": lifecycle.get("is_head"),
+        "record_class": classification,
+        "listener_types": exact_listener_types,
+        "owned_human_record": owned,
+        "human_editable": owned and bool(lifecycle.get("is_head")) and len(lifecycle.get("head_ids") or []) == 1,
         "parent_count": len(lineage.get("parent_akousma_ids") or []),
         "relation_count": len(lineage.get("relations") or []),
-        "listener_kinds": sorted({ns.split(".")[0] for ns in (record.get("listening") or {})}),
+        # Compatibility alias; values now come from accountable listener_type,
+        # never from producer namespace spelling.
+        "listener_kinds": exact_listener_types,
     }
 
 
-def detail(store, akousma_id: str) -> dict[str, Any] | None:
+def detail(store, akousma_id: str, *, local_listener_id: str | None = None) -> dict[str, Any] | None:
     record = store.get(akousma_id)
     if record is None:
         return None
@@ -150,8 +318,11 @@ def detail(store, akousma_id: str) -> dict[str, Any] | None:
     children = [cid for cid in store.children(akousma_id)]
     related = store.related(akousma_id) if hasattr(store, "related") else []
     audio_path = resolve_audio_path(store, record)
+    lifecycle = revision_lifecycle(store, akousma_id)
+    owned = owned_human_record(record, local_listener_id)
     return {
         "record": record,
+        "card": card(record, lifecycle=lifecycle, local_listener_id=local_listener_id),
         "summary": summary_line(record),
         "accountability": auditum_summary(record),
         "parents": [_ref(store, pid) for pid in parents],
@@ -161,6 +332,27 @@ def detail(store, akousma_id: str) -> dict[str, Any] | None:
             for link in related
         ],
         "audio_available": audio_path is not None,
+        "human_record": {
+            "owned_locally": owned,
+            "editable": owned and lifecycle["is_head"] and len(lifecycle["head_ids"]) == 1,
+            "owner_listener_id": _human_record_meta(record).get("owner_listener_id"),
+        },
+        "revision": {
+            "root_id": lifecycle["root_id"],
+            "head_ids": lifecycle["head_ids"],
+            "is_head": lifecycle["is_head"],
+            "history": [
+                {
+                    "akousma_id": item["akousma_id"],
+                    "created_at": item.get("created_at"),
+                    "summary": summary_line(item),
+                    "record_class": record_class(item),
+                    "listener_types": listener_types(item),
+                    "owned_human_record": owned_human_record(item, local_listener_id),
+                }
+                for item in lifecycle["history"]
+            ],
+        },
     }
 
 
@@ -255,17 +447,18 @@ def auditum_summary(record: dict[str, Any], *, known_record_ids: set[str] | None
     if len(set(decision_ids)) != len(decision_ids):
         issues.append("route decision ids are not unique")
 
-    decision_only = not listenings and bool(decisions)
-    if contract == "earworm/auditum/v1" and not listenings:
-        issues.append("auditum/v1 has no attributable listenings")
-    if contract == "earworm/auditum/v2" and not decisions:
-        issues.append("auditum/v2 has no route decisions")
-    if decision_only and not any(
+    has_precapture_stop = any(
         decision.get("gate") in {"input", "capture"}
         and decision.get("outcome") in {"pause", "defer", "abstain", "refuse", "withhold"}
         for decision in decisions
         if isinstance(decision, dict)
-    ):
+    )
+    decision_only = not listenings and has_precapture_stop
+    if contract == "earworm/auditum/v1" and not listenings:
+        issues.append("auditum/v1 has no attributable listenings")
+    if contract == "earworm/auditum/v2" and not decisions:
+        issues.append("auditum/v2 has no route decisions")
+    if not listenings and decisions and not has_precapture_stop:
         issues.append("an empty listening list needs an input or capture stop decision")
 
     disagreements = block.get("disagreements") if isinstance(block.get("disagreements"), list) else []
@@ -424,13 +617,35 @@ def create_manual_memory(
     parent_akousma_ids: list[str] | None = None,
     relations: list[dict[str, Any]] | None = None,
     location: dict[str, Any] | None = None,
+    heard: bool = True,
+    human_profile: dict[str, str] | None = None,
+    revision_of: str | None = None,
+    revision_reason: str | None = None,
+    revision_changes: list[str] | None = None,
+    retained_audio: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """A human listening event becomes an akousma: what you heard belongs in
-    the same library as what the agents heard, with the listener declared."""
+    """Create an additive, locally owned human account.
+
+    ``heard`` is explicit evidence. A human account always carries an
+    attributable listening entry, but notes never manufacture a ``heard``
+    claim: when ``heard`` is false the payload and honest absence preserve that
+    distinction explicitly.
+    """
     lib = _akousma()
-    audio: dict[str, Any] = {"asset_id": f"manual_{lib.new_id('man')[4:]}"}
+    if human_profile is None:
+        from akousmata_app.settings import ensure_human_profile
+
+        human_profile = ensure_human_profile()
+    listener_id = str(human_profile.get("listener_id") or "").strip()
+    if not listener_id:
+        raise ValueError("a stable local human listener id is required")
+
+    audio: dict[str, Any] | None = dict(retained_audio) if retained_audio else None
     origin = "unknown"
-    source_type = "recorded"
+    source_type = "unknown"
+    if audio:
+        origin = "file"
+        source_type = "imported"
     if audio_data is not None:
         if not audio_data:
             raise ValueError("uploaded audio is empty")
@@ -438,6 +653,7 @@ def create_manual_memory(
             raise ValueError("uploaded audio is larger than 100 MB")
         data = audio_data
         ext = normalize_audio_extension(audio_extension)
+        audio = {"asset_id": f"manual_{lib.new_id('man')[4:]}"}
         audio["uri"] = store.put_audio(data, ext=ext)
         audio["content_hash"] = "sha256:" + sha256(data).hexdigest()
         duration = _wav_bytes_duration(data) if ext == "wav" else None
@@ -446,7 +662,13 @@ def create_manual_memory(
         origin = "file"
         source_type = "imported"
 
-    payload: dict[str, Any] = {"notes": notes or summary}
+    payload: dict[str, Any] = {
+        "notes": notes or summary,
+        "hearing_evidence": {
+            "kind": "self_attested_hearing" if heard else "hearing_not_attested",
+            "confirmed": heard,
+        },
+    }
     if place:
         payload["place"] = place
     if heard_at:
@@ -458,24 +680,83 @@ def create_manual_memory(
         checked_location["label"] = place
 
     created_at = _utc_now()
+    # Namespace remains stable for older clients; classification comes only
+    # from the auditum's listener_type, never from this spelling.
     namespace = "human.note"
     listening_id = lib.new_id("lst")
+    decision_id = lib.new_id("dec")
     listening_entry = {
         "contract": AKOUSMATA_CONTRACT,
         "created_at": created_at,
         "summary": summary,
         "payload": payload,
     }
-    honest_absences = [] if audio_data is not None else [{
-        "id": lib.new_id("abs"),
-        "kind": "not_retained",
-        "subject": "raw audio",
-        "attributed_to": "manual listening entry",
+    honest_absences = []
+    if audio is None:
+        honest_absences.append({
+            "id": lib.new_id("abs"),
+            "kind": "not_retained",
+            "subject": "raw audio",
+            "attributed_to": listener_id,
+            "listening_id": listening_id,
+            "count": 1,
+        })
+    elif not heard:
+        honest_absences.append({
+            "id": lib.new_id("abs"),
+            "kind": "refused",
+            "subject": "human hearing claim",
+            "attributed_to": listener_id,
+            "listening_id": None,
+            "count": 1,
+            "note": "The author added a note without attesting that they heard the event.",
+        })
+    listening_items = [{
         "listening_id": listening_id,
-        "count": 1,
+        "listener_id": listener_id,
+        "listener_type": "human",
+        "created_at": created_at,
+        "report_namespace": namespace,
+        "contract": AKOUSMATA_CONTRACT,
+        "claim_set_ref": None,
+        "route": [
+            "explicit-human-self-attestation"
+            if heard
+            else "explicit-human-account-without-hearing-claim"
+        ],
+        "route_decision_refs": [decision_id],
     }]
+    route_decision = lib.route_decision(
+        decision_id,
+        gate="input",
+        outcome="proceed",
+        subject="human listening account" if heard else "human note without a hearing claim",
+        reason=(
+            "The local human explicitly attested to this bounded listening account."
+            if heard
+            else "The local human explicitly declined to turn this note into evidence of hearing."
+        ),
+        actor=listener_id,
+        decided_at=created_at,
+        listening_id=listening_id,
+        producer_contract=AKOUSMATA_CONTRACT,
+        authority_mode="execute_scoped",
+        granted_by="explicit Add my listening action" if heard else "explicit note-without-hearing action",
+        requires_confirmation=False,
+        reversible=True,
+    )
+    revision = None
+    if revision_of:
+        revision = {
+            "revision_id": lib.new_id("rev"),
+            "revises_akousma_id": revision_of,
+            "reason": (revision_reason or "the local human revised their listening account").strip(),
+            "changes": list(revision_changes or ["human listening account revised"]),
+            "created_at": created_at,
+        }
     record = lib.new_akousma(
         audio=audio,
+        subject=f"human account: {summary}" if audio is None else None,
         originating_app="akousmata",
         source_type=source_type,
         origin=origin,
@@ -486,45 +767,130 @@ def create_manual_memory(
         summary=summary,
         location=checked_location,
         auditum=lib.auditum(
-            listenings=[{
-                "listening_id": listening_id,
-                "listener_id": "manual-human-listener",
-                "listener_type": "human",
-                "created_at": created_at,
-                "report_namespace": namespace,
-                "contract": AKOUSMATA_CONTRACT,
-                "claim_set_ref": None,
-                "route": ["manual-human-listening"],
-                "route_decision_refs": ["decision-manual-entry"],
-            }],
+            listenings=listening_items,
             honest_absences=honest_absences,
-            route_decisions=[lib.route_decision(
-                "decision-manual-entry",
-                gate="input",
-                outcome="proceed",
-                subject="manual listening account",
-                reason="A human explicitly chose to add this bounded listening account to the library.",
-                actor="manual-human-listener",
-                decided_at=created_at,
-                listening_id=listening_id,
-                producer_contract=AKOUSMATA_CONTRACT,
-                authority_mode="execute_scoped",
-                granted_by="explicit manual Remember action",
-                requires_confirmation=False,
-                reversible=True,
-            )],
+            route_decisions=[route_decision],
+            revision=revision,
         ),
     )
-    record["extensions"]["akousmata.app"] = {"listener": {"type": "human", "process": "manual_entry"}}
+    root_id = revision_lifecycle(store, revision_of)["root_id"] if revision_of else record["akousma_id"]
+    profile_display = str(human_profile.get("display_name") or "").strip()
+    profile_privacy = str(human_profile.get("privacy") or "private")
+    human_meta: dict[str, Any] = {
+        "owner_listener_id": listener_id,
+        "privacy": profile_privacy,
+        "revision_root": root_id,
+    }
+    if profile_privacy == "shared" and profile_display:
+        human_meta["display_name"] = profile_display
+    record["extensions"]["akousmata.app"] = {
+        "listener": {"type": "human", "process": "manual_entry"},
+        "human_record": human_meta,
+    }
     store.put(record)
     return record
 
 
-def update_record(store, akousma_id: str, patch: dict[str, Any]) -> dict[str, Any]:
-    """Edit the app-owned fields only (tags, annotations, summary, location).
+def revise_human_record(
+    store,
+    akousma_id: str,
+    *,
+    human_profile: dict[str, str],
+    summary: str,
+    notes: str,
+    tags: list[str] | None,
+    heard_at: str | None,
+    place: str | None,
+    kind: str,
+    location: dict[str, Any] | None,
+    heard: bool,
+    reason: str,
+) -> dict[str, Any]:
+    current = store.get(akousma_id)
+    if current is None:
+        raise KeyError(f"akousma not found: {akousma_id}")
+    listener_id = str(human_profile.get("listener_id") or "")
+    if not owned_human_record(current, listener_id):
+        raise PermissionError("only a locally owned human record can be revised")
+    lifecycle = revision_lifecycle(store, akousma_id)
+    if len(lifecycle["head_ids"]) != 1:
+        raise ValueError("the revision history has multiple heads; resolve the divergence before editing")
+    if not lifecycle["is_head"]:
+        raise ValueError("only the current revision head can be revised")
+    if not reason.strip():
+        raise ValueError("a revision reason is required")
 
-    Location is listener-annotatable per spec v1.2: the navigator may add or
-    correct where a sound was heard after the fact; ``{}`` clears it."""
+    existing_relations = [
+        dict(item)
+        for item in ((current.get("lineage") or {}).get("relations") or [])
+        if isinstance(item, dict) and item.get("type") != "replaces"
+    ]
+    existing_relations.append(_akousma().relation(
+        "replaces",
+        akousma_id,
+        note="additive revision of a locally owned human listening account",
+    ))
+    changes = []
+    previous_payload = next(
+        (
+            entry.get("payload") if isinstance(entry.get("payload"), dict) else entry
+            for entry in (current.get("listening") or {}).values()
+            if isinstance(entry, dict)
+        ),
+        {},
+    )
+    comparisons = {
+        "summary": (summary_line(current), summary),
+        "notes": (previous_payload.get("notes"), notes),
+        "tags": (list(current.get("tags") or []), list(tags or [])),
+        "heard_at": (previous_payload.get("heard_at"), heard_at),
+        "place": (previous_payload.get("place"), place),
+        "kind": (previous_payload.get("kind"), kind),
+        "location": (current.get("location"), location),
+        "hearing evidence": (record_class(current) == "human", heard),
+    }
+    for label, (before, after) in comparisons.items():
+        if before != after:
+            changes.append(label)
+    if not changes:
+        raise ValueError("the revision does not change the human account")
+
+    revised = create_manual_memory(
+        store,
+        summary=summary,
+        notes=notes,
+        tags=tags,
+        heard_at=heard_at,
+        place=place,
+        kind=kind,
+        relations=existing_relations,
+        location=location,
+        heard=heard,
+        human_profile=human_profile,
+        revision_of=akousma_id,
+        revision_reason=reason,
+        revision_changes=changes,
+        retained_audio=current.get("audio") if isinstance(current.get("audio"), dict) else None,
+    )
+    source_provenance = current.get("provenance") if isinstance(current.get("provenance"), dict) else {}
+    provenance_patch = {
+        key: source_provenance[key]
+        for key in ("consent_status", "rights_note")
+        if source_provenance.get(key) is not None
+    }
+    if provenance_patch:
+        revised["provenance"].update(provenance_patch)
+        store.put(revised)
+    return revised
+
+
+def update_record(store, akousma_id: str, patch: dict[str, Any]) -> dict[str, Any]:
+    """Curate app-owned metadata only (tags, annotations, summary, location).
+
+    This is deliberately separate from revising a human listening account.
+    Machine listening/event/core fields remain protected by Earworm. Location
+    is listener-annotatable per spec v1.2; ``{}`` clears it.
+    """
     unknown = set(patch) - EDITABLE_FIELDS
     if unknown:
         raise ValueError(f"not editable: {', '.join(sorted(unknown))}. Editable: {', '.join(sorted(EDITABLE_FIELDS))}")
@@ -549,16 +915,37 @@ def update_record(store, akousma_id: str, patch: dict[str, Any]) -> dict[str, An
             record.pop("location", None)
         else:
             record["location"] = _checked_location(value)
-    record.setdefault("extensions", {}).setdefault("akousmata.app", {})["edited_at"] = _utc_now()
+    app_extension = record.setdefault("extensions", {}).setdefault("akousmata.app", {})
+    app_extension["edited_at"] = _utc_now()  # compatibility with <=0.6 clients
+    app_extension["curation_edited_at"] = app_extension["edited_at"]
     store.put(record)
     return record
 
 
-def add_relation(store, akousma_id: str, rel_type: str, target_akousma_id: str, note: str | None = None) -> dict[str, Any]:
+def add_relation(
+    store,
+    akousma_id: str,
+    rel_type: str,
+    target_akousma_id: str,
+    note: str | None = None,
+    *,
+    local_listener_id: str | None = None,
+    same_source_verified: bool = False,
+) -> dict[str, Any]:
     lib = _akousma()
     record = store.get(akousma_id)
     if record is None:
         raise KeyError(f"akousma not found: {akousma_id}")
+    target = store.get(target_akousma_id)
+    if target is None:
+        raise KeyError(f"akousma not found: {target_akousma_id}")
+    if rel_type in {"response_to", "same_source_as"}:
+        if not owned_human_record(record, local_listener_id):
+            raise PermissionError(f"{rel_type} links must originate from a locally owned human record")
+        if record_class(target) not in {"agent", "hybrid"}:
+            raise ValueError(f"{rel_type} target must contain an attributable agent or hybrid listening")
+    if rel_type == "same_source_as" and not same_source_verified:
+        raise ValueError("same_source_as requires explicit source verification")
     relations = record.setdefault("lineage", {}).setdefault("relations", [])
     if not any(r.get("type") == rel_type and r.get("target_akousma_id") == target_akousma_id for r in relations):
         relations.append(lib.relation(rel_type, target_akousma_id, note))

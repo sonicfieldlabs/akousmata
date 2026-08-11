@@ -108,6 +108,12 @@ button.btn.danger { color: var(--bad); }
 .badge.app-germ { color: #5a6e4a; }
 .badge.app-algophony { color: #6e4a5e; }
 .badge.app-akousmata { color: var(--warn); }
+.badge.record-human { border-color: #6f9b7b; color: #557f61; }
+.badge.record-agent { border-color: #6b7f9f; color: #556c91; }
+.badge.record-hybrid { border-color: #92769d; color: #795b85; }
+.badge.record-plural_other { border-color: #96835f; color: #806c48; }
+.badge.record-decision_only { border-color: #8c795b; color: #725f43; }
+.badge.record-legacy { border-color: var(--line); color: var(--muted); }
 .minitag { font-size: 11px; color: var(--faint); }
 
 /* detail */

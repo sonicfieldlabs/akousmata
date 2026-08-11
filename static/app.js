@@ -82,6 +82,8 @@ function filterParams() {
   if (text) params.set("text", text);
   if ($("f-app").value) params.set("app_filter", $("f-app").value);
   if ($("f-origin").value) params.set("origin", $("f-origin").value);
+  if ($("f-class").value) params.set("record_class", $("f-class").value);
+  if ($("f-listener").value) params.set("listener_type", $("f-listener").value);
   if (state.activeTag) params.set("tag", state.activeTag);
   if (state.activeCovenant) params.set("covenant", state.activeCovenant);
   return params;
@@ -112,6 +114,13 @@ async function loadRecords() {
     const line2 = el("div", "line2");
     line2.append(el("span", `badge app-${record.originating_app || "unknown"}`, record.originating_app || "?"));
     if (record.origin) line2.append(el("span", "badge", record.origin));
+    line2.append(el("span", `badge record-${record.record_class || "legacy"}`, (record.record_class || "legacy").replaceAll("_", " ")));
+    for (const listenerType of record.listener_types || []) {
+      const typeBadge = el("span", "minitag", listenerType.replaceAll("_", " "));
+      typeBadge.title = "declared by auditum.listenings[].listener_type";
+      line2.append(typeBadge);
+    }
+    if (record.owned_human_record) line2.append(el("span", "minitag", record.human_editable ? "my editable head" : "my earlier revision"));
     if (record.has_audio) line2.append(el("span", "badge", "audio"));
     if (record.has_location) line2.append(el("span", "minitag", "⌖"));
     if (record.covenant_id) {
@@ -191,6 +200,11 @@ function renderDetail(data) {
   const title = el("h3", "", data.summary);
   pane.append(title);
   pane.append(el("div", "mono note", record.akousma_id));
+  const identityRow = el("div", "row");
+  identityRow.append(el("span", `badge record-${data.card?.record_class || "legacy"}`, (data.card?.record_class || "legacy").replaceAll("_", " ")));
+  for (const listenerType of data.card?.listener_types || []) identityRow.append(el("span", "minitag", listenerType.replaceAll("_", " ")));
+  if (data.human_record?.owned_locally) identityRow.append(el("span", "minitag", data.human_record.editable ? "my current human head" : "my preserved earlier revision"));
+  pane.append(identityRow);
 
   const provenance = record.provenance || {};
   const grid = el("div", "kv");
@@ -219,9 +233,83 @@ function renderDetail(data) {
     pane.append(audio);
   }
 
-  // tags editor
+  // Human account lifecycle. Editing never rewrites the selected record: it
+  // creates the next attributable revision and leaves this one intact.
+  const revisionHistory = data.revision?.history || [];
+  if (revisionHistory.length > 1 || data.revision?.root_id !== record.akousma_id) {
+    const historySection = el("div", "section linklist");
+    historySection.append(el("h2", "", "revision history"));
+    for (const item of revisionHistory) {
+      const row = el("div", "row");
+      const marker = (data.revision.head_ids || []).includes(item.akousma_id) ? "head" : "preserved";
+      row.append(linkTo(item.akousma_id, item.summary, false));
+      row.append(el("span", "note", `${marker} · ${item.record_class.replaceAll("_", " ")} · ${(item.created_at || "").slice(0, 16)}`));
+      historySection.append(row);
+    }
+    pane.append(historySection);
+  }
+
+  if (data.human_record?.editable) {
+    const editSection = el("div", "section");
+    editSection.append(el("h2", "", "edit my current human listening"));
+    editSection.append(el("p", "note", "Saving creates a new revision. This record and its machine links remain preserved."));
+    const humanEntry = Object.values(record.listening || {}).find((entry) => entry && typeof entry === "object") || {};
+    const humanPayload = humanEntry.payload && typeof humanEntry.payload === "object" ? humanEntry.payload : humanEntry;
+    const editor = el("div", "form-grid");
+    const summaryInput = el("input"); summaryInput.type = "text"; summaryInput.value = data.summary || "";
+    const notesInput = el("textarea"); notesInput.value = humanPayload.notes || "";
+    const tagsInput = el("input"); tagsInput.type = "text"; tagsInput.value = (record.tags || []).join(", ");
+    const heardInput = el("input"); heardInput.type = "checkbox"; heardInput.checked = data.card?.record_class === "human";
+    const heardLabel = el("label", "note", " I personally heard this event"); heardLabel.prepend(heardInput);
+    const reasonInput = el("input"); reasonInput.type = "text"; reasonInput.placeholder = "why this revision is needed";
+    const saveRevision = el("button", "btn primary", "save as new revision");
+    saveRevision.addEventListener("click", async () => {
+      try {
+        const result = await api(`/api/human-records/${record.akousma_id}/revisions`, {
+          method: "POST",
+          body: JSON.stringify({
+            summary: summaryInput.value.trim(),
+            notes: notesInput.value,
+            tags: tagsInput.value.split(",").map((tag) => tag.trim()).filter(Boolean),
+            heard_at: humanPayload.heard_at || null,
+            place: humanPayload.place || null,
+            kind: humanPayload.kind || "heard_live",
+            location: record.location || null,
+            heard: heardInput.checked,
+            reason: reasonInput.value.trim(),
+          }),
+        });
+        toast(`new human revision ${result.record.akousma_id}`);
+        await loadRecords();
+        selectRecord(result.record.akousma_id);
+      } catch (error) { toast(error.message); }
+    });
+    editor.append(
+      el("label", "", "summary"), summaryInput,
+      el("label", "", "notes"), notesInput,
+      el("label", "", "tags"), tagsInput,
+      el("label", "", "hearing claim"), heardLabel,
+      el("label", "", "revision reason"), reasonInput,
+      el("label", "", ""), saveRevision,
+    );
+    editSection.append(editor);
+    pane.append(editSection);
+  }
+
+  if ((data.card?.listener_types || []).includes("agent")) {
+    const humanResponse = el("div", "section row");
+    humanResponse.append(el("span", "note", "Keep the machine account immutable and add your own record beside it."));
+    const respondButton = el("button", "btn primary", "Add my listening in response");
+    respondButton.addEventListener("click", () => openHumanForm(record.akousma_id));
+    humanResponse.append(respondButton);
+    pane.append(humanResponse);
+  }
+
+  // Library curation is metadata over any record; it is not an edit to the
+  // producer's listening/event account.
   const tagSection = el("div", "section");
-  tagSection.append(el("h2", "", "tags"));
+  tagSection.append(el("h2", "", "library curation · tags"));
+  tagSection.append(el("p", "note", "Curation metadata only — machine and human listening cores remain immutable."));
   const tagRow = el("div", "row");
   const tagInput = el("input");
   tagInput.type = "text";
@@ -241,7 +329,7 @@ function renderDetail(data) {
 
   // place (spec v1.2 location — listener-annotatable: add or correct it here)
   const placeSection = el("div", "section");
-  placeSection.append(el("h2", "", "place"));
+  placeSection.append(el("h2", "", "library curation · place"));
   const loc = record.location && typeof record.location.lat === "number" ? record.location : null;
   const placeRow = el("div", "row");
   if (loc) {
@@ -344,7 +432,7 @@ function renderDetail(data) {
     pane.append(covSection);
   }
 
-  // Accountable auditum (spec v1.5). This is an index over producer-owned
+  // Accountable auditum (spec v1.6). This is an index over producer-owned
   // reports: attribution and disagreement are rendered, never synthesized.
   const auditum = record.auditum && record.auditum.contract ? record.auditum : null;
   if (auditum) {
@@ -499,12 +587,22 @@ function renderDetail(data) {
   const relAdd = el("button", "btn", "relate");
   relAdd.addEventListener("click", async () => {
     if (!relTarget.value.trim()) return;
-    await api(`/api/records/${record.akousma_id}/relations`, {
-      method: "POST",
-      body: JSON.stringify({ type: relType.value, target_akousma_id: relTarget.value.trim() }),
-    });
-    toast("kinship added");
-    selectRecord(record.akousma_id);
+    const sameSourceVerified = relType.value === "same_source_as"
+      ? confirm("Have you verified that both records concern the same source? This is stronger than a response link.")
+      : false;
+    if (relType.value === "same_source_as" && !sameSourceVerified) return;
+    try {
+      await api(`/api/records/${record.akousma_id}/relations`, {
+        method: "POST",
+        body: JSON.stringify({
+          type: relType.value,
+          target_akousma_id: relTarget.value.trim(),
+          same_source_verified: sameSourceVerified,
+        }),
+      });
+      toast("kinship added");
+      selectRecord(record.akousma_id);
+    } catch (error) { toast(error.message); }
   });
   addRow.append(relType, relTarget, relAdd);
   section.append(addRow);
@@ -563,7 +661,7 @@ function renderDetail(data) {
 
   // notes (annotations)
   const noteSection = el("div", "section");
-  noteSection.append(el("h2", "", "notes"));
+  noteSection.append(el("h2", "", "library curation · note"));
   const noteArea = el("textarea");
   noteArea.value = (record.annotations || {}).note || "";
   const noteSave = el("button", "btn", "save note");
@@ -676,10 +774,21 @@ function renderDetail(data) {
   pane.append(conRow);
 }
 
-for (const id of ["f-text", "f-app", "f-origin"]) {
+for (const id of ["f-text", "f-app", "f-origin", "f-class", "f-listener"]) {
   $(id).addEventListener(id === "f-text" ? "input" : "change", () => loadRecords());
 }
-$("btn-add").addEventListener("click", () => { $("add-form").hidden = !$("add-form").hidden; });
+function openHumanForm(responseTo = "") {
+  $("add-form").hidden = false;
+  $("m-response-to").value = responseTo;
+  $("m-same-source").checked = false;
+  $("m-summary").focus();
+  $("add-form").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+$("btn-add").addEventListener("click", () => {
+  if ($("add-form").hidden) openHumanForm();
+  else $("add-form").hidden = true;
+});
 $("m-cancel").addEventListener("click", () => { $("add-form").hidden = true; });
 
 const manualGeo = { source: "manual", accuracy_m: null };
@@ -707,7 +816,14 @@ $("m-save").addEventListener("click", async () => {
     place: $("m-place").value.trim() || null,
     heard_at: $("m-heard").value.trim() || null,
     kind: $("m-kind").value,
+    heard: $("m-heard-confirm").checked,
   };
+  const responseTo = $("m-response-to").value.trim();
+  if (responseTo) body.response_to = responseTo;
+  if (responseTo && $("m-same-source").checked) {
+    body.same_source_as = responseTo;
+    body.same_source_verified = true;
+  }
   const lat = parseFloat($("m-lat").value);
   const lon = parseFloat($("m-lon").value);
   if (Number.isFinite(lat) && Number.isFinite(lon)) {
@@ -720,13 +836,15 @@ $("m-save").addEventListener("click", async () => {
       const form = new FormData();
       form.append("metadata", JSON.stringify(body));
       form.append("audio", audioFile, audioFile.name);
-      data = await apiForm("/api/records/import", form);
+      data = await apiForm("/api/human-records/import", form);
     } else {
-      data = await api("/api/records", { method: "POST", body: JSON.stringify(body) });
+      data = await api("/api/human-records", { method: "POST", body: JSON.stringify(body) });
     }
     $("m-status").textContent = "";
     $("add-form").hidden = true;
-    for (const id of ["m-summary", "m-notes", "m-tags", "m-place", "m-heard", "m-audio", "m-lat", "m-lon"]) $(id).value = "";
+    for (const id of ["m-summary", "m-notes", "m-tags", "m-place", "m-heard", "m-response-to", "m-audio", "m-lat", "m-lon"]) $(id).value = "";
+    $("m-heard-confirm").checked = true;
+    $("m-same-source").checked = false;
     $("m-loc-status").textContent = "";
     manualGeo.source = "manual";
     manualGeo.accuracy_m = null;
@@ -947,6 +1065,7 @@ $("d-save").addEventListener("click", async () => {
         text,
         tags: $("d-tags").value.split(",").map((t) => t.trim()).filter(Boolean),
         place: $("d-place").value.trim() || null,
+        heard: $("d-heard").checked,
       }),
     });
     $("d-text").value = ""; $("d-status").textContent = "";
@@ -1616,6 +1735,10 @@ $("r-start").addEventListener("click", async () => {
 async function loadSettings() {
   const data = await api("/api/settings");
   state.settings = data;
+  const profile = data.human_profile || {};
+  $("s-listener-id").value = profile.listener_id || "";
+  $("s-display-name").value = profile.display_name || "";
+  $("s-profile-privacy").value = profile.privacy || "private";
   $("s-germ").value = data.germ_url || "";
   $("s-oida").value = data.oida_url || "";
   $("s-provider").value = data.llm.provider || "none";
@@ -1642,6 +1765,10 @@ $("s-save").addEventListener("click", async () => {
   const body = {
     germ_url: $("s-germ").value.trim(),
     oida_url: $("s-oida").value.trim(),
+    human_profile: {
+      display_name: $("s-display-name").value.trim(),
+      privacy: $("s-profile-privacy").value,
+    },
     llm: {
       provider: $("s-provider").value,
       base_url: $("s-baseurl").value.trim(),

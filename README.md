@@ -7,25 +7,33 @@ relations. This app is how you walk it — navigating sonic memories, not audio
 files.
 
 The akousmata stores what agents listen (oída's ears, algophony's
-evaluations, germ's cultivations) **and what you listen**: manual
-human listening events live in the same library, with the listener declared.
+evaluations, germ's cultivations) **and what you listen**. Human and machine
+accounts remain separate records in the same library, with each listener
+declared and typed links between accounts when warranted.
 Every memory carries provenance and causal lineage ("made from") plus typed
 kinship ("belongs with"): variants, recurrences, series, responses. A heard
 memory carries attributable listenings; a gate that closed before hearing can
 instead carry a decision-only auditum without pretending that sound occurred.
 
-Current release: `0.6.1`.
+Current release: `0.7.0`.
 
 ## What it is
 
 A local-first library app over the shared akousmata store. It loads **no
 models and runs no agents** — it is the quiet room of the Listening Stack:
 
-- **Library** — filter by app, origin, tag, text, time; play resolvable
-  audio; edit tags, notes, and summaries; add manual memories (heard live or
-  from a file, which is content-addressed into the store); forget with a
+- **Library** — filter by app, origin, tag, text, time, exact listener type,
+  and derived record class; play resolvable audio; curate tags, notes, and
+  location separately from listening accounts; add human listenings (heard
+  live or from a file, which is content-addressed into the store); forget with a
   content-free durable receipt that leaves absence visible without retaining
   the forgotten description.
+- **Human listening lifecycle** — one stable identifier in ignored local
+  settings owns human records. Only the unique current head of an owned human
+  account can be edited, and saving creates a new attributable revision rather
+  than rewriting history. Notes do not imply hearing: hearing is an explicit
+  self-attestation. A human record may `response_to` a machine listening;
+  `same_source_as` additionally requires explicit source verification.
 - **Graph** — the memory system as a navigable graph: solid edges are
   lineage, dashed edges are kinship, colors are originating apps.
 - **Map** — the listening map: where listenings happened, not where sounds
@@ -53,7 +61,7 @@ models and runs no agents** — it is the quiet room of the Listening Stack:
   counted and attributed, never described — and the commitments it carries),
   and one click filters the library to everything heard under that covenant.
   The navigator displays sovereignty; it never edits it.
-- **Accountable auditums (spec v1.5)** — cards, detail pages, the wiki, graph,
+- **Accountable auditums (spec v1.6)** — cards, detail pages, the wiki, graph,
   and Audit view expose each attributable listener and route, temporal-pass
   and provenance references, preserved disagreement, honest absences, action
   authority, route decisions, receipts, and revisions. A refusal before
@@ -108,9 +116,9 @@ that protocol, not a fork of it.
 
 | Component | Version / contract | Relationship |
 | --- | --- | --- |
-| [Earworm](https://github.com/sonicfieldlabs/earworm) | `akousma 0.6.1` / spec v1.5 | Canonical store and addressable auditum contract: decisions, lineage, attributable disagreement resolution, absence, forgetting receipts, ensembles, authority, and mechanically additive revision. |
+| [Earworm](https://github.com/sonicfieldlabs/earworm) | `akousma 0.7.0` / spec v1.6 | Canonical store, no-audio listening accounts, listener-type/class indexes, and additive revision chains. |
 | [AKOÚŌ](https://github.com/sonicfieldlabs/akouo) | `akouo/v0.9` | Owns claim taxonomy, provenance, temporal passes, route decisions, corpus disclosure, and situated context rendered by the navigator. |
-| [OÍDA](https://github.com/sonicfieldlabs/oida) | 0.9.2 / `oida/gateway/v0.5` | Writes listening events v0.3 and decision-only route outcomes; produces additive re-listening revisions and embeds the navigator at `/library/`. |
+| [OÍDA](https://github.com/sonicfieldlabs/oida) | 0.10.0 / `oida/gateway/v0.6` | Writes typed machine and human listening records, links related accounts, and embeds the navigator at `/library/`. |
 | [GERM](https://github.com/sonicfieldlabs/germ) | 0.3.3 (optional) | Receives explicit sound, prompt, and lineage handoffs when separately configured. |
 | [Algophony](https://github.com/sonicfieldlabs/algophony) | 0.5.2 | Adds batch evaluation stamps and comparison relations. |
 | [ORAM](https://github.com/sonicfieldlabs/oram) | 0.4.1 | ORAM exports can enter the store through OÍDA or another akousma producer; ORAM is not a direct store writer. |

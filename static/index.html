@@ -47,17 +47,39 @@
           <option value="generated">generated</option>
           <option value="unknown">unknown</option>
         </select>
+        <select id="f-class" title="derived from auditum listener types">
+          <option value="">every record class</option>
+          <option value="human">human</option>
+          <option value="agent">agent</option>
+          <option value="hybrid">hybrid</option>
+          <option value="plural_other">plural / other</option>
+          <option value="decision_only">decision only</option>
+          <option value="legacy">legacy</option>
+        </select>
+        <select id="f-listener" title="exact auditum listener type">
+          <option value="">every listener type</option>
+          <option value="human">human</option>
+          <option value="agent">agent</option>
+          <option value="hybrid">hybrid</option>
+          <option value="community">community</option>
+          <option value="institution">institution</option>
+          <option value="sensor">sensor</option>
+          <option value="habitat">habitat</option>
+          <option value="other_animal">other animal</option>
+          <option value="ensemble">ensemble</option>
+          <option value="other">other</option>
+        </select>
         <span id="tag-chips"></span>
         <span id="covenant-chip"></span>
         <span class="spacer" style="flex:1"></span>
-        <button class="btn primary" id="btn-add">Add memory</button>
+        <button class="btn primary" id="btn-add">Add my listening</button>
       </div>
       <div class="library">
         <div class="list-pane"><div id="rec-list"></div></div>
         <div class="detail-pane"><div id="rec-detail" class="detail"><div class="empty">select a memory</div></div></div>
       </div>
       <div class="section" id="add-form" hidden>
-        <h2>Add a manual memory — what you listened</h2>
+        <h2>Add my listening — a human account beside machine listenings</h2>
         <div class="form-grid">
           <label>summary</label><input type="text" id="m-summary" placeholder="one line of what you heard" />
           <label>notes</label><textarea id="m-notes" placeholder="longer notes: how it sounded, what it did to you…"></textarea>
@@ -71,6 +93,11 @@
             <span class="note" id="m-loc-status"></span>
           </div>
           <label>heard at</label><input type="text" id="m-heard" placeholder="when (optional, free text or ISO)" />
+          <label>hearing claim</label>
+          <label class="note"><input type="checkbox" id="m-heard-confirm" checked /> I personally heard this event. Notes alone do not make this claim.</label>
+          <label>responds to</label><input type="text" id="m-response-to" placeholder="optional machine akm_… id" />
+          <label>same source</label>
+          <label class="note"><input type="checkbox" id="m-same-source" /> I verified that my account and the linked machine event concern the same source.</label>
           <label>kind</label>
           <select id="m-kind">
             <option value="heard_live">heard live (no file)</option>
@@ -164,6 +191,7 @@
           <label>entry</label><textarea id="d-text" placeholder="what you listened today, in your words…"></textarea>
           <label>tags</label><input type="text" id="d-tags" placeholder="comma, separated (diary is always added)" />
           <label>place</label><input type="text" id="d-place" placeholder="where (optional)" />
+          <label>hearing claim</label><label class="note"><input type="checkbox" id="d-heard" /> I personally heard this; unchecked diary notes remain non-hearing records.</label>
           <label></label>
           <div class="row"><button class="btn primary" id="d-save">Write in the diary</button><span class="note" id="d-status"></span></div>
         </div>
@@ -234,6 +262,16 @@
     </main>
 
     <main id="tab-settings" hidden>
+      <div class="section">
+        <h2>Local human profile</h2>
+        <p class="note">This stable listener handle stays in local settings and controls which human revision heads you may edit. It is not authentication.</p>
+        <div class="form-grid">
+          <label>listener id</label><input type="text" id="s-listener-id" readonly />
+          <label>display name</label><input type="text" id="s-display-name" placeholder="optional" />
+          <label>record privacy</label>
+          <select id="s-profile-privacy"><option value="private">private (do not copy display name)</option><option value="shared">shared (copy display name into new records)</option></select>
+        </div>
+      </div>
       <div class="section">
         <h2>Connections</h2>
         <div class="form-grid">

@@ -79,7 +79,7 @@ class NavigatorTests(unittest.TestCase):
                 handle.setsampwidth(2)
                 handle.setframerate(16000)
                 handle.writeframes(b"\x00\x00" * 1600)
-        metadata = {"summary": summary, "tags": list(tags), "kind": "file"}
+        metadata = {"summary": summary, "tags": list(tags), "kind": "file", "heard": True}
         response = self.client.post(
             "/api/records/import",
             data={"metadata": json.dumps(metadata)},
@@ -105,6 +105,7 @@ class NavigatorTests(unittest.TestCase):
         manual = self.client.post("/api/records", json={
             "summary": "a bell heard without a recording",
             "notes": "one short decay",
+            "heard": True,
         }).json()["record"]
         audit = self.client.get("/api/audit/accountability").json()
         self.assertEqual(audit["accountable"], 1)
@@ -289,6 +290,7 @@ class NavigatorTests(unittest.TestCase):
         created = self.client.post("/api/records", json={
             "summary": "river under the bridge",
             "tags": ["river"],
+            "heard": True,
             "location": {"lat": 6.2442, "lon": -75.5812, "label": "puente de la 4 sur", "source": "gps"},
         })
         self.assertEqual(created.status_code, 200, created.text)
@@ -400,6 +402,7 @@ class NavigatorTests(unittest.TestCase):
             "notes": "sharp, granular, almost synthetic",
             "tags": ["rain", "home"],
             "kind": "file",
+            "heard": True,
         }
         response = self.client.post(
             "/api/records/import",
@@ -441,6 +444,193 @@ class NavigatorTests(unittest.TestCase):
             files={"audio": ("clip.wav", b"", "audio/wav")},
         )
         self.assertEqual(empty.status_code, 400)
+
+    def _agent_listening_record(self, *, namespace="human.misleading_namespace", listener_type="agent"):
+        created_at = "2026-08-11T12:00:00Z"
+        listening_id = akousma.new_id("lst")
+        decision_id = akousma.new_id("dec")
+        target = akousma.new_akousma(
+            audio={"asset_id": akousma.new_id("asset")},
+            originating_app="oida",
+            origin="file",
+            source_type="imported",
+            listening={namespace: {
+                "contract": "oida/gateway/v0.6",
+                "created_at": created_at,
+                "summary": "machine account under a deliberately misleading namespace",
+                "payload": {"summary": "machine pass"},
+            }},
+            auditum=akousma.auditum(
+                listenings=[{
+                    "listening_id": listening_id,
+                    "listener_id": f"test-{listener_type}-listener",
+                    "listener_type": listener_type,
+                    "created_at": created_at,
+                    "report_namespace": namespace,
+                    "contract": "oida/gateway/v0.6",
+                    "route": ["basic"],
+                    "route_decision_refs": [decision_id],
+                }],
+                route_decisions=[akousma.route_decision(
+                    decision_id,
+                    gate="input",
+                    outcome="proceed",
+                    subject="test audio",
+                    reason="The bounded test input was available.",
+                    actor=f"test-{listener_type}-listener",
+                    decided_at=created_at,
+                    listening_id=listening_id,
+                    requires_confirmation=False,
+                )],
+            ),
+        )
+        store = akousma.AkousmataStore(self.tmp.name)
+        try:
+            store.put(target)
+        finally:
+            store.close()
+        return target
+
+    def test_listener_classification_uses_auditum_types_and_notes_do_not_imply_heard(self):
+        heard = self.client.post("/api/human-records", json={
+            "summary": "a human heard the courtyard bell",
+            "notes": "one decay",
+            "heard": True,
+        })
+        self.assertEqual(heard.status_code, 200, heard.text)
+        heard_record = heard.json()["record"]
+        self.assertNotIn("audio", heard_record)
+        heard_card = self.client.get(f"/api/records/{heard_record['akousma_id']}").json()["card"]
+        self.assertEqual(heard_card["record_class"], "human")
+        self.assertEqual(heard_card["listener_types"], ["human"])
+        self.assertTrue(heard_card["owned_human_record"])
+        self.assertTrue(heard_card["human_editable"])
+
+        note = self.client.post("/api/human-records", json={
+            "summary": "a note about an event I did not hear",
+            "notes": "received from another person",
+        })
+        self.assertEqual(note.status_code, 200, note.text)
+        note_record = note.json()["record"]
+        self.assertEqual(note_record["auditum"]["listenings"][0]["listener_type"], "human")
+        self.assertFalse(note_record["listening"]["human.note"]["payload"]["hearing_evidence"]["confirmed"])
+        note_card = self.client.get(f"/api/records/{note_record['akousma_id']}").json()["card"]
+        self.assertEqual(note_card["record_class"], "human")
+        self.assertEqual(note_card["listener_types"], ["human"])
+
+        agent = self._agent_listening_record()
+        sensor = self._agent_listening_record(namespace="agent.misleading_sensor", listener_type="sensor")
+        cards = {item["akousma_id"]: item for item in self.client.get("/api/records").json()["records"]}
+        self.assertEqual(cards[agent["akousma_id"]]["record_class"], "agent")
+        self.assertEqual(cards[agent["akousma_id"]]["listener_types"], ["agent"])
+        self.assertEqual(cards[sensor["akousma_id"]]["record_class"], "plural_other")
+        self.assertEqual(cards[sensor["akousma_id"]]["listener_types"], ["sensor"])
+        self.assertEqual(cards[self.parent_id]["record_class"], "legacy")
+
+        human_only = self.client.get("/api/records", params={"record_class": "human"}).json()["records"]
+        self.assertEqual(
+            {item["akousma_id"] for item in human_only},
+            {heard_record["akousma_id"], note_record["akousma_id"]},
+        )
+        agents = self.client.get("/api/records", params={"listener_type": "agent"}).json()["records"]
+        self.assertEqual([item["akousma_id"] for item in agents], [agent["akousma_id"]])
+        self.assertEqual(self.client.get("/api/records", params={"listener_type": "machine"}).status_code, 400)
+
+    def test_human_machine_links_are_typed_and_same_source_requires_verification(self):
+        agent = self._agent_listening_record(namespace="anything.at.all")
+        unverified = self.client.post("/api/human-records", json={
+            "summary": "my position beside the agent pass",
+            "same_source_as": agent["akousma_id"],
+            "heard": True,
+        })
+        self.assertEqual(unverified.status_code, 400)
+
+        linked = self.client.post("/api/human-records", json={
+            "summary": "my position beside the agent pass",
+            "notes": "the near bell was more prominent to me",
+            "response_to": agent["akousma_id"],
+            "same_source_as": agent["akousma_id"],
+            "same_source_verified": True,
+            "heard": True,
+        })
+        self.assertEqual(linked.status_code, 200, linked.text)
+        record = linked.json()["record"]
+        self.assertEqual(record["lineage"]["parent_akousma_ids"], [])
+        self.assertEqual(
+            {item["type"] for item in record["lineage"]["relations"]},
+            {"response_to", "same_source_as"},
+        )
+        legacy_target = self.client.post("/api/human-records", json={
+            "summary": "invalid legacy link", "response_to": self.parent_id,
+        })
+        self.assertEqual(legacy_target.status_code, 400)
+        false_parent = self.client.post("/api/human-records", json={
+            "summary": "invalid causal claim", "parent_akousma_ids": [agent["akousma_id"]],
+        })
+        self.assertEqual(false_parent.status_code, 400)
+
+        from_machine = self.client.post(f"/api/records/{agent['akousma_id']}/relations", json={
+            "type": "response_to", "target_akousma_id": record["akousma_id"],
+        })
+        self.assertEqual(from_machine.status_code, 403)
+
+    def test_owned_human_edit_creates_a_new_revision_head(self):
+        first_profile = self.client.get("/api/human-profile").json()
+        second_profile = self.client.get("/api/human-profile").json()
+        self.assertEqual(first_profile["listener_id"], second_profile["listener_id"])
+        updated_profile = self.client.put("/api/human-profile", json={
+            "display_name": "local listener", "privacy": "shared",
+        })
+        self.assertEqual(updated_profile.status_code, 200, updated_profile.text)
+
+        created = self.client.post("/api/human-records", json={
+            "summary": "first account of the rain",
+            "notes": "steady rain",
+            "tags": ["rain"],
+            "heard": True,
+        }).json()["record"]
+        self.assertEqual(
+            created["extensions"]["akousmata.app"]["human_record"]["display_name"],
+            "local listener",
+        )
+        revised_response = self.client.post(f"/api/human-records/{created['akousma_id']}/revisions", json={
+            "summary": "revised account of the rain",
+            "notes": "steady rain with a distant bus",
+            "tags": ["rain", "bus"],
+            "kind": "heard_live",
+            "heard": True,
+            "reason": "I remembered the distant bus",
+        })
+        self.assertEqual(revised_response.status_code, 200, revised_response.text)
+        revised = revised_response.json()["record"]
+        self.assertNotEqual(revised["akousma_id"], created["akousma_id"])
+        self.assertEqual(revised["auditum"]["revision"]["revises_akousma_id"], created["akousma_id"])
+        self.assertIn("replaces", {item["type"] for item in revised["lineage"]["relations"]})
+
+        original_detail = self.client.get(f"/api/records/{created['akousma_id']}").json()
+        new_detail = self.client.get(f"/api/records/{revised['akousma_id']}").json()
+        self.assertEqual(original_detail["record"]["summary"], "first account of the rain")
+        self.assertFalse(original_detail["human_record"]["editable"])
+        self.assertTrue(new_detail["human_record"]["editable"])
+        self.assertEqual(len(new_detail["revision"]["history"]), 2)
+
+        stale = self.client.post(f"/api/human-records/{created['akousma_id']}/revisions", json={
+            "summary": "stale branch", "notes": "no", "heard": True, "reason": "should fail",
+        })
+        self.assertEqual(stale.status_code, 400)
+        machine = self._agent_listening_record(namespace="agent.report")
+        forbidden = self.client.post(f"/api/human-records/{machine['akousma_id']}/revisions", json={
+            "summary": "rewrite machine", "notes": "no", "heard": True, "reason": "should fail",
+        })
+        self.assertEqual(forbidden.status_code, 403)
+        core_patch = self.client.patch(f"/api/records/{machine['akousma_id']}", json={"listening": {}})
+        self.assertEqual(core_patch.status_code, 422)
+        curation = self.client.patch(f"/api/records/{machine['akousma_id']}/curation", json={"tags": ["reviewed"]})
+        self.assertEqual(curation.status_code, 200)
+        self.assertEqual(curation.json()["operation"], "library_curation")
+
+        revisions = self.client.get("/api/records", params={"revision_of": created["akousma_id"]}).json()["records"]
+        self.assertEqual([item["akousma_id"] for item in revisions], [revised["akousma_id"]])
 
     def test_edit_guarded_fields(self):
         response = self.client.patch(f"/api/records/{self.parent_id}", json={"tags": ["harbor", "series"], "summary": "harbor, first take"})

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.7.0 — Human and Machine Listening Accounts
+
+- Added stable local human profiles with optional shared display names and
+  private-by-default record identity metadata.
+- Classified records from `auditum.listenings[].listener_type`, with exact
+  listener-type and coarse human/agent/hybrid/plural-other/decision/legacy
+  filters. Producer namespaces no longer stand in for listener identity.
+- Added explicit human-record creation and additive revision endpoints. Only
+  the locally owned, unique revision head is editable; machine listening and
+  event cores remain immutable, while library curation stays a separate API.
+- Added typed human-to-machine `response_to` links and verification-gated
+  `same_source_as` links without manufacturing causal parentage.
+- Made hearing self-attestation explicit. Notes and diary text can be stored
+  without becoming evidence that a human heard an event.
+- Raised the store floor to `akousma >= 0.7.0` / akousma spec v1.6 and bumped
+  the application contract to `akousmata/v0.7`.
+
 ## 0.6.1 — Additive account integrity
 
 - Raised the canonical store floor to `akousma >= 0.6.1`, which prevents
