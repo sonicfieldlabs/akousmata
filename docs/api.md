@@ -3,12 +3,14 @@
 Local endpoints (default http://127.0.0.1:5180, env `AKOUSMATA_PORT`/`AKOUSMATA_HOST`):
 
 - `GET /api/health` — store path, totals by app/origin, latest timestamp.
-- `GET /api/records` — filters: `app_filter`, `origin`, `source_type`, `tag`, `text`, `since`, `until`, `covenant`, `accountable`, `disagreement`, `route_decision`, `stop_decision`, `limit`. Cards include covenant identity plus listening, ensemble, disagreement, absence, action, decision, stop, decision-only, and revision summaries.
-- `POST /api/records` — manual memory without audio: `{summary, notes?, tags?, place?, heard_at?, kind, parent_akousma_ids?, relations?, location?}`. `location` is spec-v1.2 `{lat, lon, accuracy_m?, altitude_m?, label?, source?, captured_at?}`; `place` doubles as its label when none is given.
-- `POST /api/records/import` — the same manual-memory object as JSON in multipart field `metadata`, plus an `audio` file (100 MB maximum). The server copies bytes into the content-addressed store; it never accepts a server-side filesystem path.
-- `GET /api/records/{id}` — full record + parents/children/kinship + audio availability. Unknown top-level fields (spec v1.2 open records) come through verbatim and render in the UI's "more details" section.
-- `PATCH /api/records/{id}` — guarded edit: `tags`, `annotations`, `summary`, `location` only (`location: {}` clears; location is listener-annotatable per spec v1.2).
-- `POST /api/records/{id}/relations` / `DELETE …/relations?type=&target_akousma_id=` — typed kinship.
+- `GET /api/records` — filters: `app_filter`, `origin`, `source_type`, `tag`, `text`, `since`, `until`, `covenant`, `accountable`, `disagreement`, `route_decision`, `stop_decision`, `listener_type`, `record_class`, `revision_of`, `limit`. Cards expose exact `listener_types`, derived `record_class`, revision root/head state, local ownership, and human editability.
+- `GET/PUT /api/human-profile` — the stable local ownership handle plus optional display name and `private|shared` record privacy. The id is generated once under ignored local settings and cannot be replaced through the API.
+- `POST /api/human-records` (`POST /api/records` compatibility alias) — additive human account: `{summary, notes?, tags?, place?, heard_at?, kind?, location?, heard?, response_to?, same_source_as?, same_source_verified?}`. `heard` defaults false and must be explicitly true for an attributable human listening; notes do not imply hearing. Human/machine links are typed kinship, never `parent_akousma_ids`; `same_source_as` is rejected unless verified.
+- `POST /api/human-records/import` (`POST /api/records/import` alias) — the same human object as JSON in multipart field `metadata`, plus an audio file (100 MB maximum). The server copies bytes into the content-addressed store and never accepts a server-side path.
+- `POST /api/human-records/{id}/revisions` — `{summary, notes?, tags?, heard_at?, place?, kind?, location?, heard, reason}` creates a fresh record with `auditum.revision`; only the locally owned unique head is accepted.
+- `GET /api/records/{id}` — full record + parents/children/kinship, exact listener classification, ownership/editability, revision history/heads, and audio availability. Unknown top-level fields come through verbatim.
+- `PATCH /api/records/{id}/curation` (`PATCH /api/records/{id}` alias) — guarded library curation: `tags`, `annotations`, `summary`, `location` only. It cannot modify a machine or human listening/event core.
+- `POST /api/records/{id}/relations` / `DELETE …/relations?type=&target_akousma_id=` — typed kinship. `response_to`/`same_source_as` must originate from a locally owned human record and target an attributable agent or hybrid listening; `same_source_as` additionally needs `same_source_verified: true`.
 - `POST /api/records/{id}/forget` — `{delete_audio?, actor?, reason?}`; returns an `earworm/forgetting-receipt/v1`. Inbound edges remain as absence and the receipt carries no forgotten content.
 - `GET /api/forgetting-receipts?akousma_id=` — content-free durable receipts, newest first. A receipt prevents silent resurrection under the same id.
 - `GET /api/audio/{id}` — stream resolvable audio.
@@ -18,7 +20,7 @@ Local endpoints (default http://127.0.0.1:5180, env `AKOUSMATA_PORT`/`AKOUSMATA_
 - `GET/POST/PATCH/DELETE /api/constellations…` — ordered saved selections and playable resolution with missing-member absences.
 - `GET /api/timeline?bucket=day|month|season|year` — temporal buckets plus recurrence rhythms.
 - `GET /api/records/{id}/similar` — tagged/textual, DSP-feature, and optional stored-local-embedding kinship with explicit score bases.
-- `POST /api/diary` / `GET /api/diary/{day}` — quick capture (`{text, tags?, place?, location?}`) and maintained daily digest.
+- `POST /api/diary` / `GET /api/diary/{day}` — quick capture (`{text, tags?, place?, location?, heard?}`) and maintained daily digest. `heard` defaults false so diary prose alone is not a hearing claim.
 - `GET /api/audit/accountability` — accountable/legacy coverage, route and stop decisions, decision-only records, plural-listening and explicitly declared ear-swarm counts, forgetting receipts, disagreement/revision coverage, and attributable structural issues. It audits record shape; it does not adjudicate claims.
 - `GET /api/audit/consent` / `POST /api/records/{id}/consent` — consent, rights notes, capture conditions, and exportability.
 - `POST /api/export` / `GET /api/exports` — sanitized selection packs with wiki/audio files, exclusions, consent gate, and manifest.

@@ -43,10 +43,10 @@ addressed.
   maintains. The Memex quality — connections as valuable as documents — is
   native here.
 - **Grounding is enforced by contract.** Listening entries carry their
-  contract pins (`akouo/v0.9`, `akousmata/v0.6`, `oida/gateway/v0.5`); claims carry sources and
+  contract pins (`akouo/v0.9`, `akousmata/v0.7`, `oida/gateway/v0.6`); claims carry sources and
   time anchors upstream. The wiki inherits the stack's epistemic discipline
   instead of hoping for it.
-- **Plurality is not a summary operation.** Akousma v1.5 auditums keep every
+- **Plurality is not a summary operation.** Akousma v1.6 auditums keep every
   listener and route attributable, and the wiki renders disagreement as
   several positions rather than smoothing it into one voice. Honest absence,
   route decisions, action authority, and re-listening revision are equally
