@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- Reused the consent-aware pack pipeline with an explicit metadata allowlist.
+  JSONL, wiki and previews share projections; unknown fields and unselected
+  lineage cannot reappear. Exclusion details stay in the owner response, with
+  a count stored outside the shareable archive.
+- Added host-owned, field-scoped public grants bound to current source content,
+  with revocation and consent rechecks. Imported metadata grants no authority.
+- Added a separately mountable public router for projected records, filtered
+  pagination and counts. Owner APIs remain local and private. Package and
+  released akousma contract versions are unchanged.
+- Fixed the calendar-season test to use a fixed creation date.
+
 ## 0.7.0 — Human and Machine Listening Accounts
 
 - Added stable local human profiles with optional shared display names and

@@ -47,6 +47,7 @@ class NavigatorTests(unittest.TestCase):
             listening={"oida.signal": {"created_at": "2026-07-10T00:00:00Z", "payload": {"caption": "low machinery hum"}}},
             tags=["harbor", "field"],
         )
+        parent["created_at"] = "2026-07-10T00:00:00Z"
         store.put(parent)
         child = akousma.new_akousma(
             audio={"asset_id": "gen_1"},
@@ -58,6 +59,7 @@ class NavigatorTests(unittest.TestCase):
             prompt="metallic harbor",
             tags=["harbor"],
         )
+        child["created_at"] = "2026-07-10T01:00:00Z"
         store.put(child)
         store.close()
         self.parent_id = parent["akousma_id"]

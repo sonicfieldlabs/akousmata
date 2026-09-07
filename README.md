@@ -55,6 +55,9 @@ models and runs no agents** — it is the quiet room of the Listening Stack:
 - **Consent and export** — an audit of consent, rights notes, and capture
   conditions; restricted or unknown records are blocked from sanitized,
   manifest-bearing research packs.
+- **Public projections** — explicit local grants select shareable metadata;
+  public pages and counts include only current approved projections. Export
+  packs reuse the same allowlist. [Integration and limits](docs/public-projections.md).
 - **Covenants (spec v1.3)** — records made under a listening covenant say so:
   the detail pane shows under which ethics a sound was listened (the
   covenant's identity and lineage, the rules that acted, what was withheld —

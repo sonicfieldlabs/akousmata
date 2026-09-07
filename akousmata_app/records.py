@@ -1147,6 +1147,9 @@ def set_consent(store, akousma_id: str, consent_status: str, rights_note: str | 
             record["provenance"].pop("rights_note", None)
     record.setdefault("extensions", {}).setdefault("akousmata.app", {})["consent_set_by"] = "human"
     store.put(record)
+    # A later rights assertion must not silently revive an earlier public grant.
+    from akousmata_app.publication import revoke
+    revoke(store, akousma_id)
     return record
 
 

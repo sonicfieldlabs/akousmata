@@ -16,12 +16,12 @@ from urllib.parse import urlencode
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, FastAPI, File, Form, HTTPException, Query, Response, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from akousmata_app import AKOUSMATA_CONTRACT, __version__, constellations, exports, graph, records, research, similar, watcher, wiki
+from akousmata_app import AKOUSMATA_CONTRACT, __version__, constellations, exports, graph, publication, records, research, similar, watcher, wiki
 from akousmata_app.llm import validate_http_url
 from akousmata_app.paths import open_store, store_root
 from akousmata_app.settings import ensure_human_profile, load as load_settings
@@ -48,6 +48,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="akousmata", version=__version__, lifespan=lifespan)
+public_router = APIRouter(prefix="/api/public")
 
 
 class ManualMemory(BaseModel):
@@ -150,6 +151,88 @@ def health() -> dict[str, Any]:
             "store_path": str(store_root()),
             **info,
         }
+    finally:
+        store.close()
+
+
+@public_router.get("/status")
+def public_status(response: Response, tag: str | None = None, text: str | None = None) -> dict[str, Any]:
+    response.headers["Cache-Control"] = "no-store"
+    store = _store()
+    try:
+        return publication.public_counts(store, tag=tag, text=text)
+    finally:
+        store.close()
+
+
+@public_router.get("/records")
+def public_records(response: Response, limit: int = Query(default=50, ge=1, le=200),
+                   cursor: str | None = None, tag: str | None = None, text: str | None = None) -> dict[str, Any]:
+    response.headers["Cache-Control"] = "no-store"
+    store = _store()
+    try:
+        try:
+            return publication.public_page(store, limit=limit, cursor=cursor, tag=tag, text=text)
+        except publication.ViewChanged as exc:
+            raise HTTPException(status_code=409, detail=str(exc), headers={"Cache-Control": "no-store"}) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc), headers={"Cache-Control": "no-store"}) from exc
+    finally:
+        store.close()
+
+
+@public_router.get("/records/{akousma_id}")
+def public_record(akousma_id: str, response: Response) -> dict[str, Any]:
+    response.headers["Cache-Control"] = "no-store"
+    store = _store()
+    try:
+        result = publication.public_record(store, akousma_id)
+        if result is None:
+            raise HTTPException(status_code=404, detail="record not available", headers={"Cache-Control": "no-store"})
+        return {"record": result}
+    finally:
+        store.close()
+
+
+app.include_router(public_router)
+
+
+class PublicationBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    fields: list[str]
+
+
+@app.get("/api/records/{akousma_id}/publication")
+def publication_status(akousma_id: str) -> dict[str, Any]:
+    store = _store()
+    try:
+        if store.get(akousma_id) is None:
+            raise HTTPException(status_code=404, detail="record not found")
+        return publication.grant_status(store, akousma_id)
+    finally:
+        store.close()
+
+
+@app.post("/api/records/{akousma_id}/publication")
+def grant_publication(akousma_id: str, body: PublicationBody) -> dict[str, Any]:
+    store = _store()
+    try:
+        try:
+            return publication.grant(store, akousma_id, body.fields)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="record not found") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    finally:
+        store.close()
+
+
+@app.delete("/api/records/{akousma_id}/publication")
+def revoke_publication(akousma_id: str) -> dict[str, Any]:
+    store = _store()
+    try:
+        publication.revoke(store, akousma_id)
+        return {"state": "revoked"}
     finally:
         store.close()
 
@@ -856,12 +939,15 @@ def set_consent(akousma_id: str, body: ConsentBody) -> dict[str, Any]:
 
 
 class ExportBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     name: str
     akousma_ids: list[str] = Field(default_factory=list)
     constellation_id: str | None = None
     tag: str | None = None
     include_audio: bool = True
     include_wiki: bool = True
+    audience: str = "selection"
+    fields: list[str] = Field(default_factory=lambda: list(exports.DEFAULT_EXPORT_FIELDS))
 
 
 @app.post("/api/export")
@@ -878,13 +964,14 @@ def export_pack(body: ExportBody) -> dict[str, Any]:
             ids.extend(record["akousma_id"] for record in store.query(tag=body.tag, limit=1000))
         if not ids:
             raise HTTPException(status_code=400, detail="nothing selected: pass akousma_ids, a constellation_id, or a tag")
-        result = exports.build_pack(
-            store,
-            name=body.name,
-            akousma_ids=ids,
-            include_audio=body.include_audio,
-            include_wiki=body.include_wiki,
-        )
+        try:
+            result = exports.build_pack(
+                store, name=body.name, akousma_ids=ids,
+                include_audio=body.include_audio, include_wiki=body.include_wiki,
+                audience=body.audience, fields=body.fields,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         wiki.log_append("export", body.name, f"{result['included']} included, {len(result['excluded'])} blocked")
         return result
     finally:
