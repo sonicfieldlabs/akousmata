@@ -572,6 +572,12 @@ def _ref_summary(store, akousma_id: str | None) -> str:
 
 
 def resolve_audio_path(store, record: dict[str, Any]) -> Path | None:
+    if 'oida.spectral' in record.get('extensions', {}):
+        from akousmata_app.derivatives import authorized_bundle
+        try:
+            authorized_bundle(store, record['akousma_id'])
+        except ValueError:
+            return None
     uri = str((record.get("audio") or {}).get("uri") or "")
     if uri.startswith("akousmata://"):
         path = store.resolve_uri(uri)

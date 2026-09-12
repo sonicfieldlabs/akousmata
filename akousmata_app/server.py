@@ -557,12 +557,42 @@ def forget(akousma_id: str, body: ForgetBody) -> dict[str, Any]:
         )
         if receipt is None:
             raise HTTPException(status_code=404, detail=f"akousma not found: {akousma_id}")
+        from akousmata_app.derivatives import reconcile_derivatives
+        reconcile_derivatives(store)
         wiki.log_append(
             "forget",
             akousma_id,
             f"record removed with receipt {receipt['receipt_id']}; inbound edges remain as absence",
         )
         return {"forgotten": akousma_id, "receipt": receipt}
+    finally:
+        store.close()
+
+
+@app.get("/api/records/{akousma_id}/derivatives")
+def derivatives_list(akousma_id: str):
+    from akousmata_app.derivatives import list_derivatives
+    store = _store()
+    try:
+        return list_derivatives(store, akousma_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    finally:
+        store.close()
+
+
+@app.get("/api/records/{akousma_id}/derivatives/{view_id}")
+def derivative_download(akousma_id: str, view_id: str):
+    from fastapi.responses import Response
+    from akousmata_app.derivatives import read_derivative
+    store = _store()
+    try:
+        return Response(read_derivative(store, akousma_id, view_id),
+                        media_type="application/x-npy",
+                        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
+                                 "Content-Disposition": 'attachment; filename="derivative.npy"'})
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=404, detail="Derivative unavailable") from exc
     finally:
         store.close()
 
@@ -949,6 +979,8 @@ def set_consent(akousma_id: str, body: ConsentBody) -> dict[str, Any]:
     try:
         try:
             record = records.set_consent(store, akousma_id, body.consent_status, body.rights_note)
+            from akousmata_app.derivatives import revoke_derivatives
+            revoke_derivatives(store, akousma_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:

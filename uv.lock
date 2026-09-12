@@ -8,7 +8,7 @@ resolution-markers = [
 
 [[package]]
 name = "akousma"
-version = "0.7.0"
+version = "0.8.0"
 source = { editable = "../earworm/packages/py-akousma" }
 dependencies = [
     { name = "jsonschema" },
@@ -25,11 +25,13 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "akousmata"
-version = "0.7.0"
+version = "0.8.0"
 source = { editable = "." }
 dependencies = [
     { name = "akousma" },
     { name = "fastapi" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "python-multipart" },
     { name = "soundfile" },
     { name = "uvicorn" },
@@ -50,6 +52,7 @@ requires-dist = [
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27" },
     { name = "httpx2", marker = "extra == 'dev'", specifier = ">=2.7" },
     { name = "jsonschema", marker = "extra == 'dev'", specifier = ">=4.21" },
+    { name = "numpy", specifier = ">=1.26" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
     { name = "python-multipart", specifier = ">=0.0.32" },
     { name = "soundfile", specifier = ">=0.12" },
