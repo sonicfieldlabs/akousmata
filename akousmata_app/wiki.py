@@ -111,6 +111,22 @@ def record_page(store, record: dict[str, Any]) -> str:
             lines.append(text or "_structured payload without a prose summary_")
             lines.append("")
 
+    # Public packs contain only allowlisted metadata, so no auditum is available.
+    if record.get('auditum'):
+        from akousmata_app.listening_relations import project
+        view = project(record)
+        lines.extend(['## Who listened to whom', ''])
+        if view['independent']:
+            lines.append('Independent retained passes; no redirection recorded.')
+        for node in view['nodes']:
+            if node['kind']=='listening':
+                lines.append(f"- `{node['participant_id']}` ({node['participant_type']}) · pass `{node['pass_id']}` · listening `{node['listening_id']}`")
+        for edge in view['edges']:
+            lines.append(f"- {edge['kind'].replace('_', ' ')}: `{edge['source']}` → `{edge['target']}`")
+            if edge.get('effect'): lines.append('  - '+edge['effect'])
+            lines.append('  - '+edge['basis'])
+        lines.append('')
+
     auditum = record.get("auditum") if isinstance(record.get("auditum"), dict) else None
     if auditum:
         lines.append("## Accountable auditum")

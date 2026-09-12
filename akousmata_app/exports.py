@@ -29,7 +29,21 @@ PROJECTION_FIELDS = {"summary", "subject", "tags", "provenance", "audio_metadata
 DEFAULT_EXPORT_FIELDS = ("summary", "subject", "tags", "provenance", "audio_metadata")
 
 
+def claim_clock() -> str:
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
 def exportable(record: dict[str, Any]) -> tuple[bool, str]:
+    claims = record.get("extensions", {}).get("earworm_listening_context", {}).get("claims", [])
+    if claims:
+        from akousma.listening_context import claim_validity_at
+        now = claim_clock()
+        try:
+            if any(claim_validity_at(claim, now) != "current" for claim in claims):
+                return False, "receiving claim currency is not current; owner review required"
+        except (ValueError, TypeError, KeyError):
+            return False, "invalid receiving claim validity"
     consent = str((record.get("provenance") or {}).get("consent_status") or "unknown")
     if consent in EXPORTABLE_CONSENT:
         return True, consent

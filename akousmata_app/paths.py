@@ -78,4 +78,13 @@ def open_store(root: str | Path | None = None):
             "the 'akousma' package is required: pip install -e <SFL>/earworm/packages/py-akousma "
             "(or set AKOUSMATA_PYAKOUSMA_PATH)"
         ) from exc
-    return akousma.AkousmataStore(root or store_root())
+    store = akousma.AkousmataStore(root or store_root())
+    from akousmata_app.relation_index import ensure
+    try:
+        ensure(store)
+        from akousmata_app.research_proposals import ensure as ensure_research
+        ensure_research(store)
+    except Exception:
+        store.close()
+        raise
+    return store

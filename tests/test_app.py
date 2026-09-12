@@ -772,8 +772,8 @@ class NavigatorTests(unittest.TestCase):
         try:
             parent = store.get(self.parent_id)
             child = store.get(self.child_id)
-            parent.setdefault("extensions", {}).setdefault("akousmata.app", {})["embedding"] = [1.0, 0.0, 0.5]
-            child.setdefault("extensions", {}).setdefault("akousmata.app", {})["embedding"] = [0.9, 0.1, 0.45]
+            parent.setdefault("extensions", {}).setdefault("akousmata.app", {})["embedding"] = {"space": dict(model="test/encoder", revision="a"*40, preprocessing_sha256="b"*64, dimensions=3, pooling="mean", metric="cosine"), "vector": [1.0, 0.0, 0.5]}
+            child.setdefault("extensions", {}).setdefault("akousmata.app", {})["embedding"] = {"space": dict(model="test/encoder", revision="a"*40, preprocessing_sha256="b"*64, dimensions=3, pooling="mean", metric="cosine"), "vector": [0.9, 0.1, 0.45]}
             store.put(parent)
             store.put(child)
         finally:

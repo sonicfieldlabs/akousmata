@@ -148,3 +148,30 @@ canonical sibling packages are editable. Tests: `uv run pytest -q`.
 ## License
 
 MIT. The store data is yours and never part of the repository.
+
+Receiving claims with an Earworm listening-context validity declaration are checked
+again for every new export and public read. Unknown, future or expired currency
+is withheld from current projections. Retention-review dates do not delete the
+canonical historical record or extend claim validity. Existing local export
+archives remain historical copies, not continuously refreshed views.
+
+[Listening relationships](docs/listening-relations.md) documents the owner view of
+independent passes, second reports, additive responses and retained influence traces.
+
+[Producer evidence and additive correction](docs/producer-evidence.md) defines the
+boundary between human responses, library curation, research review and authorized
+forgetting.
+
+[Canonical research proposals and relation metadata](docs/research-proposals.md)
+reuse the existing index, research sessions and scheduled watcher with additive
+reviews, durable retry/cancellation and explicit evidence-ancestry accounting.
+
+[Qualified facets and access views](docs/access-facets.md) expose subject/recipient,
+matter register/scale and declared human access, with the full listener taxonomy.
+
+The Graph tab provides walkable retained lineage and explicit local captures with
+cursor pagination and replay. See [graph history](docs/graph-history.md) for privacy,
+bounds and the distinction between saved captures and continuous event history.
+
+D5 adds [verified owner bundles and score projections](docs/bundles-and-score.md)
+through the existing export, canonical record and graph-history services.

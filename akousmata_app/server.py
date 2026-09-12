@@ -274,6 +274,9 @@ def list_records(
     record_class: str | None = None,
     revision_of: str | None = None,
     limit: int = 200,
+    subject: str | None = None, recipient: str | None = None,
+    human_access: str | None = None, register: str | None = None, scale: str | None = None,
+    offset: int = Query(0, ge=0), oldest_first: bool = False,
 ) -> dict[str, Any]:
     store = _store()
     try:
@@ -294,8 +297,10 @@ def list_records(
                 has_stop_decision=stop_decision,
                 listener_type=listener_type,
                 record_class_filter=record_class,
+                facets={k:v for k,v in dict(subject=subject,recipient=recipient,human_access=human_access,register=register,scale=scale).items() if v is not None},
                 revision_of=revision_of,
                 limit=max(1, min(limit, 1000)),
+                offset=offset, oldest_first=oldest_first,
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -413,6 +418,22 @@ async def import_record(
     if len(data) > records.MAX_MANUAL_AUDIO_BYTES:
         raise HTTPException(status_code=413, detail="uploaded audio is larger than 100 MB")
     return _create_manual_record(body, audio_data=data, audio_extension=extension)
+
+
+@app.get("/api/records/{akousma_id}/listening-relations")
+def listening_relations(akousma_id: str, limit: int = 50, cursor: str | None = None):
+    from akousmata_app.listening_relations import page, ViewChanged
+    store = _store()
+    try:
+        return page(store, akousma_id, limit=limit, cursor=cursor)
+    except KeyError as exc:
+        raise HTTPException(404, 'Unknown retained record') from exc
+    except ViewChanged as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    finally:
+        store.close()
 
 
 @app.get("/api/records/{akousma_id}")
@@ -691,7 +712,7 @@ def start_research(body: ResearchBody) -> dict[str, Any]:
 
 @app.get("/api/research")
 def research_sessions() -> dict[str, Any]:
-    return {"sessions": research.list_sessions()}
+    return {"sessions": research.list_sessions(), "proposals": _proposal_call("list_requests")}
 
 
 @app.get("/api/research/{session_id}/events")
@@ -1273,3 +1294,157 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+@app.get("/api/records/{akousma_id}/relations/indexed")
+def indexed_relations(akousma_id: str, limit: int = 50, cursor: str | None = None, rel_type: str | None = None):
+    from akousmata_app.relation_index import page
+    store = _store()
+    try:
+        return page(store, akousma_id, limit=limit, cursor=cursor, rel_type=rel_type)
+    except RuntimeError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    finally:
+        store.close()
+
+
+@app.post("/api/research/proposals")
+def submit_research_proposal(body: dict[str, Any]):
+    return _proposal_call("submit", body)
+
+
+def _proposal_call(operation, *args, **kwargs):
+    store = _store()
+    try:
+        return getattr(research.proposals, operation)(store, *args, **kwargs)
+    except ImportError as exc:
+        raise HTTPException(503, "Install the compatible local AKOUO record workflow package") from exc
+    except RuntimeError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except (ValueError, TypeError, KeyError) as exc:
+        raise HTTPException(400, str(exc)) from exc
+    finally:
+        store.close()
+
+
+@app.post("/api/research/requests/{request_id}/cancel")
+def cancel_research_proposal(request_id: str):
+    return _proposal_call("cancel", request_id)
+
+
+@app.post("/api/research/proposals/{proposal_ref}/reviews")
+def review_research_proposal(proposal_ref: str, body: dict[str, Any]):
+    return _proposal_call("review", proposal_ref, body)
+
+
+@app.get("/api/research/proposals/{proposal_ref}/events")
+def proposal_review_events(proposal_ref: str, after: int = 0, limit: int = 100):
+    items = _proposal_call("events", proposal_ref, after, limit)
+    async def stream():
+        for item in items:
+            yield f"id: {item['event_id']}\ndata: {json.dumps(item)}\n\n"
+        yield f"data: {json.dumps({'kind': 'end', 'next_after': items[-1]['event_id'] if items else after})}\n\n"
+    return StreamingResponse(stream(), media_type="text/event-stream")
+
+
+@app.post("/api/research/changes/{record_id}")
+def research_record_changed(record_id: str):
+    return _proposal_call("changed", record_id)
+
+
+@app.get("/api/research/reconcile")
+def reconcile_research(limit: int = 32, after: str = ""):
+    return _proposal_call("reconcile", limit, after)
+
+
+@app.post("/api/research/changes/{record_id}/acknowledge")
+def acknowledge_research(record_id: str, body: dict[str, Any]):
+    return _proposal_call("acknowledge", record_id, body.get("sha256"))
+
+
+@app.get("/api/facets")
+def library_facets():
+    from akousmata_app.access_view import options
+    store = _store()
+    try:
+        return {"facets": options(store), "value_limit": 200, "scope": "owner library"}
+    finally:
+        store.close()
+
+
+def _graph_history_call(operation, *args, **kwargs):
+    from akousmata_app import graph_history
+    store = _store()
+    try:
+        return getattr(graph_history, operation)(store, *args, **kwargs)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    finally:
+        store.close()
+
+
+@app.post("/api/graph/snapshots")
+def capture_graph(body: dict[str, Any]):
+    return _graph_history_call("capture", focus=body.get("focus"), depth=body.get("depth", 2), limit=body.get("limit", 120))
+
+
+@app.get("/api/graph/snapshots")
+def graph_events(after: int = 0, limit: int = 50):
+    return _graph_history_call("events", after=after, limit=limit)
+
+
+@app.get("/api/graph/snapshots/{event_id}")
+def replay_graph(event_id: int):
+    return _graph_history_call("replay", event_id)
+
+
+@app.post("/api/bundles/export")
+def bundle_export(body: dict[str, Any]):
+    from akousmata_app.bundles import export_bundle
+    try:
+        with open_store() as store:
+            return export_bundle(store, body["record_ids"], disclosure=body.get("disclosure", "private"))
+    except (ValueError, KeyError, TypeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/bundles/import")
+def bundle_import(body: dict[str, Any]):
+    from akousmata_app.bundles import import_bundle, MAX_BYTES
+    import base64
+    try:
+        if set(body) != {"archive_base64", "supported_contracts"} or len(body["archive_base64"]) > MAX_BYTES * 4 // 3 + 4:
+            raise ValueError("Expected bounded archive_base64 and supported_contracts")
+        data = base64.b64decode(body["archive_base64"], validate=True)
+        with open_store() as store:
+            return import_bundle(store, data, supported_contracts=body["supported_contracts"])
+    except (ValueError, KeyError, TypeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/score")
+def score_projection(body: dict[str, Any]):
+    from akousmata_app.score import project
+    try:
+        with open_store() as store:
+            return project(store, event_id=body["event_id"], scales=body["scales"], resolution_ms=body.get("resolution_ms", 1000))
+    except (ValueError, KeyError, TypeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.get("/api/capabilities")
+def model_ecology_capabilities():
+    from akousmata_app.acoustic.api import service
+    return dict(contract="listening-stack/capability-catalog/v1", owner="akousmata",
+        deployments=service().runtime.registry.catalog(), legacy_models=[],
+        embedding_policy="Same pinned model revision, preprocessing, pooling, dimensions and metric required; legacy vectors retained but excluded from cosine")
+
+
+from akousmata_app.acoustic.api import router as acoustic_router
+app.include_router(acoustic_router)

@@ -33,3 +33,25 @@ Local endpoints (default http://127.0.0.1:5180, env `AKOUSMATA_PORT`/`AKOUSMATA_
 - `GET /api/events` — SSE store watch (new records).
 - `GET /api/watcher` / `POST /api/watcher/run` — scheduled-maintenance status and immediate reconciliation/lint.
 - `GET/PUT /api/settings` — germ/oída URLs, watcher intervals, and BYOK LLM config (key masked in reads; stored only in local settings.json).
+
+### Owner listening relationships
+
+`GET /api/records/{id}/listening-relations` returns the derived owner projection,
+with `limit` (1–200) and a source-bound `cursor`. Changed references return 409.
+See [listening relationships](listening-relations.md) for attribution and disclosure limits.
+
+Owner-only indexed relations and canonical research proposals, additive reviews,
+durable SSE review pages, changed-record reconciliation and acknowledgment are
+specified in [research-proposals.md](research-proposals.md). These reuse the existing
+store/research service; public projection fields remain unchanged.
+
+Owner [qualified facets and access views](access-facets.md) add `/api/facets`, five
+composable record filters and the unmodified `access_view` detail projection.
+
+### Explicit graph captures
+
+`POST /api/graph/snapshots` accepts `{ "focus": null, "depth": 3, "limit": 120 }`.
+`GET /api/graph/snapshots?after=0&limit=50` returns ordered capture events and
+`next_after`; `GET /api/graph/snapshots/{event_id}` replays one capture under current
+restrictions. Invalid bounds return 400; concurrent capture changes or forgotten
+snapshot content return 409. See [graph history](graph-history.md) for bounds and scope.

@@ -1,6 +1,8 @@
 # Never track personal listening memory if AKOUSMATA_PATH targets this checkout.
 index.sqlite
 index.sqlite-*
+acoustic.sqlite3
+acoustic.sqlite3-*
 objects/
 wiki/
 settings.json

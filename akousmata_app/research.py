@@ -201,3 +201,8 @@ def list_sessions() -> list[dict[str, Any]]:
             {"id": s.id, "question": s.question, "done": s.done, "mode": s.mode, "result_slug": s.result_slug}
             for s in _SESSIONS.values()
         ]
+
+
+# Canonical proposal/review work shares this owner service with traversal sessions.
+# There is no independent background research scheduler.
+from akousmata_app import research_proposals as proposals

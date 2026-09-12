@@ -83,6 +83,11 @@ def run_once(*, lint: bool = False, batch_size: int = 100) -> dict[str, Any]:
     diary_days: set[str] = set()
     store = open_store()
     try:
+        from akousmata_app.research import proposals
+        pending_research = proposals.reconcile(store, limit=min(100, max(1, batch_size)))
+        with _LOCK:
+            _STATE["research_pending"] = pending_research
+            _STATE["last_research_reconcile_at"] = _now()
         while True:
             if hasattr(store, "changed_since"):
                 try:
