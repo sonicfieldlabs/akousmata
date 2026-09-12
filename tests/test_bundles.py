@@ -8,16 +8,17 @@ from akousma import AkousmataStore, new_akousma
 from akousmata_app.bundles import export_bundle, import_bundle, inspect_bundle
 from akousmata_app import publication
 
-CONTRACTS = ["earworm/listening-memories/v1", "earworm/akousma/v1.6", "earworm/akousma/v1.7"]
+CONTRACTS = ["earworm/listening-memories/v1", "earworm/akousma/v1.6", "earworm/akousma/v1.7", "earworm/akousma/v1.8"]
 
 
-@pytest.fixture
-def case(tmp_path, monkeypatch):
+@pytest.fixture(params=["1.7.0", "1.8.0"])
+def case(tmp_path, monkeypatch, request):
     monkeypatch.setenv("AKOUSMATA_PATH", str(tmp_path / "source"))
     with AkousmataStore(tmp_path / "source") as source, AkousmataStore(tmp_path / "target") as target:
         record = new_akousma(audio={"asset_id": "synthetic-unavailable", "uri": "file:///unavailable/synthetic.wav"}, originating_app="synthetic-bundle-test", extensions={"future.private": {"opaque": [1, 2]}})
         record["provenance"]["consent_status"] = "owned"
-        source.put(record)
+        record["schema_version"] = request.param
+        source.put(record, supported_versions=[request.param])
         yield source, target, record
 
 
@@ -45,7 +46,7 @@ def test_conflict_and_reader_negotiation(case):
         import_bundle(target, data, supported_contracts=CONTRACTS[:1])
     changed = deepcopy(record)
     changed["summary"] = "conflicting local identity"
-    target.put(changed)
+    target.put(changed, supported_versions=[changed["schema_version"]])
     with pytest.raises(ValueError, match="conflict"):
         import_bundle(target, data, supported_contracts=CONTRACTS)
 
@@ -87,7 +88,7 @@ def test_new_reader_negotiation_and_preflight_rollback(case):
     result = export_bundle(source, [old["akousma_id"], modern["akousma_id"]])
     data = Path(result["archive"]).read_bytes()
     with pytest.raises(ValueError, match="support"):
-        import_bundle(target, data, supported_contracts=CONTRACTS[:-1])
+        import_bundle(target, data, supported_contracts=CONTRACTS[:2])
     assert target.get(old["akousma_id"]) is None
     import_bundle(target, data, supported_contracts=CONTRACTS)
     assert target.get(modern["akousma_id"]) == modern
@@ -115,7 +116,7 @@ def test_graph_import_uses_current_masa_validator(case, monkeypatch):
 def test_private_copy_preserves_unknown_consent_but_public_export_stays_gated(case):
     source, _, record = case
     record['provenance'].pop('consent_status')
-    source.put(record)
+    source.put(record, supported_versions=[record["schema_version"]])
     before = deepcopy(source.get(record['akousma_id']))
     data = pack(source, record)
     with zipfile.ZipFile(io.BytesIO(data)) as archive:

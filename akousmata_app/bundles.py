@@ -209,6 +209,11 @@ def import_bundle(store, data, *, supported_contracts):
             or entry["source_sha256"] != entry["sha256"]
         ):
             raise ValueError("Invalid canonical identity, version or source hash")
+        if record.get("schema_version") == "1.8.0":
+            # Canonical bundles do not carry spectral objects or host validators.
+            # Validate admission before any writes; never downgrade evidence.
+            from akousma.spectral import admit_record
+            admit_record(record, supported_versions=["1.8.0"])
         if store.forgotten(entry["id"]) or not exportable(record)[0]:
             raise ValueError("Current forgetting ledger or consent refuses import")
         old = store.get(entry["id"])
@@ -283,7 +288,10 @@ def import_bundle(store, data, *, supported_contracts):
         if store.forgotten(record["akousma_id"]):
             raise ValueError("Record was forgotten during import")
         if old is None:
-            store.put(record, **adapter)
+            options = dict(adapter)
+            if record["schema_version"] == "1.8.0":
+                options["supported_versions"] = ["1.8.0"]
+            store.put(record, **options)
         elif old != record:
             raise ValueError("Identity changed during import")
         results.append(
