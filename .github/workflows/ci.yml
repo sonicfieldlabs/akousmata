@@ -24,8 +24,14 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           repository: sonicfieldlabs/earworm
-          ref: v0.7.0
+          ref: a8b827b98222e8d437a766052c78860b311b3067 # reviewed Earworm 0.8.1
           path: earworm
+      - name: Checkout AKOÚŌ test contracts
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          repository: sonicfieldlabs/akouo
+          ref: 110fe5b848f67840a724f347039b7b071b64e272
+          path: akouo
       - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081 # v5
       - run: uv sync --extra dev
       - run: uv run pytest -q

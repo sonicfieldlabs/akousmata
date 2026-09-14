@@ -8,16 +8,17 @@ GERM handoff links, and a realtime change feed.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
+import os
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Any
 from urllib.parse import urlencode
 
-from contextlib import asynccontextmanager
-
-from fastapi import APIRouter, FastAPI, File, Form, HTTPException, Query, Response, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
+from fastapi import APIRouter, FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -49,6 +50,82 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="akousmata", version=__version__, lifespan=lifespan)
 public_router = APIRouter(prefix="/api/public")
+_WORKSPACE_ID = os.getenv("LISTENINGSTACK_WORKSPACE_ID")
+_WORKSPACE_GENERATION = os.getenv("LISTENINGSTACK_WORKSPACE_GENERATION")
+_WORKSPACE_BINDING = hashlib.sha256(
+    json.dumps(
+        ["akousmata", _WORKSPACE_ID, _WORKSPACE_GENERATION, str(store_root().expanduser().resolve())],
+        separators=(",", ":"),
+    ).encode()
+).hexdigest()
+
+
+def _owner_open(request, *, timeout):
+    import urllib.request
+
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, *args, **kwargs):
+            return None
+
+    return urllib.request.build_opener(
+        urllib.request.ProxyHandler({}), NoRedirect()
+    ).open(request, timeout=timeout)
+
+
+def _bound_owner_headers(base_url: str, owner: str) -> dict[str, str]:
+    if not _WORKSPACE_ID or not _WORKSPACE_GENERATION:
+        return {}
+    import urllib.request
+
+    try:
+        request = urllib.request.Request(base_url.rstrip("/") + "/owner/identity")
+        with _owner_open(request, timeout=2) as response:
+            raw = response.read(16385)
+        if len(raw) > 16384:
+            raise ValueError("owner identity is too large")
+        identity = json.loads(raw)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"{owner} identity is unavailable") from exc
+    if (
+        not isinstance(identity, dict)
+        or identity.get("contract") != "centaur/owner-identity/v1"
+        or identity.get("owner") != owner
+        or identity.get("workspace_id") != _WORKSPACE_ID
+        or identity.get("generation") != _WORKSPACE_GENERATION
+        or not isinstance(identity.get("binding"), str)
+    ):
+        raise HTTPException(status_code=409, detail=f"{owner} workspace binding does not match Akousmata")
+    return {
+        "X-Centaur-Workspace": _WORKSPACE_ID,
+        "X-Centaur-Generation": _WORKSPACE_GENERATION,
+        "X-Centaur-Binding": identity["binding"],
+    }
+
+
+@app.middleware("http")
+async def workspace_admission(request: Request, call_next):
+    if _WORKSPACE_ID and _WORKSPACE_GENERATION and request.method.upper() not in {"GET", "HEAD", "OPTIONS"}:
+        supplied = (
+            request.headers.get("x-centaur-workspace"),
+            request.headers.get("x-centaur-generation"),
+            request.headers.get("x-centaur-binding"),
+        )
+        if supplied != (_WORKSPACE_ID, _WORKSPACE_GENERATION, _WORKSPACE_BINDING):
+            return JSONResponse(status_code=409, content={"detail": "akousmata refused a stale or mismatched workspace binding"})
+    return await call_next(request)
+
+
+@app.get("/owner/identity")
+def owner_identity() -> dict[str, Any]:
+    return {
+        "contract": "centaur/owner-identity/v1",
+        "owner": "akousmata",
+        "mode": "workspace" if _WORKSPACE_ID and _WORKSPACE_GENERATION else "legacy",
+        "workspace_id": _WORKSPACE_ID,
+        "generation": _WORKSPACE_GENERATION,
+        "binding": _WORKSPACE_BINDING,
+        "pid": os.getpid(),
+    }
 
 
 class ManualMemory(BaseModel):
@@ -1066,13 +1143,18 @@ def listen_again(akousma_id: str, body: ListenAgainBody) -> dict[str, Any]:
         request = urllib.request.Request(
             f"{oida_url}/gateway/listen",
             data=_json.dumps({"path": str(path), "route_preset": body.preset, "remember": False}).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", **_bound_owner_headers(oida_url, "oida")},
             method="POST",
         )
         try:
             # validate_http_url() excludes urllib's local-file and custom schemes.
-            with urllib.request.urlopen(request, timeout=240) as response:  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
-                gateway_result = _json.loads(response.read().decode("utf-8"))
+            with _owner_open(request, timeout=240) as response:  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
+                raw = response.read(4 * 1024 * 1024 + 1)
+                if len(raw) > 4 * 1024 * 1024:
+                    raise ValueError("oída response exceeds its size limit")
+                gateway_result = _json.loads(raw)
+                if not isinstance(gateway_result, dict):
+                    raise ValueError("oída response must be an object")
         except Exception as exc:  # noqa: BLE001 — any transport failure reads the same to the user
             raise HTTPException(status_code=502, detail=f"oída did not answer at {oida_url}: {exc}") from exc
 

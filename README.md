@@ -1,5 +1,11 @@
 # akousmata — the listening navigator
 
+Centaur workspace launches set an immutable workspace ID and process generation.
+`GET /owner/identity` reads that binding without opening or migrating the store;
+writes require matching workspace, generation and store fingerprint headers. The
+listen-again bridge verifies Oída's identity before forwarding work. Standalone
+launches without these variables report explicit legacy mode.
+
 **akousma** (ἄκουσμα, "a thing heard"; plural **akousmata**) — one sound's
 memory. **Earworm is the protocol, the akousma is the shared record, the
 akousmata is the whole library**: a network of listened things and their

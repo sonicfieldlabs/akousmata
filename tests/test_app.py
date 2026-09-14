@@ -880,7 +880,7 @@ class NavigatorTests(unittest.TestCase):
 
         # Non-network URL schemes are rejected before urllib can open them.
         self.client.put("/api/settings", json={"oida_url": "file:///etc/passwd"})
-        with patch("urllib.request.urlopen") as urlopen:
+        with patch("akousmata_app.server._owner_open") as urlopen:
             response = self.client.post(f"/api/records/{record['akousma_id']}/listen-again", json={})
         self.assertEqual(response.status_code, 422)
         urlopen.assert_not_called()
@@ -936,10 +936,10 @@ class NavigatorTests(unittest.TestCase):
             def __exit__(self, *_args):
                 return False
 
-            def read(self):
+            def read(self, *_args):
                 return json.dumps(gateway).encode("utf-8")
 
-        with patch("urllib.request.urlopen", return_value=Response()):
+        with patch("akousmata_app.server._owner_open", return_value=Response()):
             response = self.client.post(f"/api/records/{record['akousma_id']}/listen-again", json={"preset": "field"})
         self.assertEqual(response.status_code, 200, response.text)
         body = response.json()
@@ -985,10 +985,10 @@ class NavigatorTests(unittest.TestCase):
             def __exit__(self, *_args):
                 return False
 
-            def read(self):
+            def read(self, *_args):
                 return json.dumps(gateway).encode("utf-8")
 
-        with patch("urllib.request.urlopen", return_value=Response()):
+        with patch("akousmata_app.server._owner_open", return_value=Response()):
             response = self.client.post(f"/api/records/{record['akousma_id']}/listen-again", json={})
         self.assertEqual(response.status_code, 423, response.text)
         detail = response.json()["detail"]
