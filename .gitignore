@@ -28,3 +28,6 @@ dist/
 !.env.example
 .DS_Store
 *.log
+
+# Runtime derivative lock (not source)
+.derivatives.lock
