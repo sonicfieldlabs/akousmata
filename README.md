@@ -21,7 +21,7 @@ kinship ("belongs with"): variants, recurrences, series, responses. A heard
 memory carries attributable listenings; a gate that closed before hearing can
 instead carry a decision-only auditum without pretending that sound occurred.
 
-Current release: `0.8.1`.
+Source version: `0.8.1`, an unpublished candidate; the last published release is `v0.7.0`.
 
 ## What it is
 
@@ -150,6 +150,21 @@ canonical sibling packages are editable. Tests: `uv run pytest -q`.
   evaluates batches and stamps results back onto records; **AKOÚŌ** defines
   how everything listens. The akousmata is where all of it — and you —
   keep one shared memory.
+
+## What does not exist yet
+
+- **A published 0.8.1.** This checkout's 0.8.1 is an unpublished candidate, and its commits are not
+  pushed. The last published release is `v0.7.0`.
+- **Authentication, or more than one owner.** The navigator has neither: it serves one owner on
+  this machine, and mounting its full app exposes the owner routes. Only `public_router` is meant
+  for another host, and it has three read-only `/api/public` routes
+  ([public projections](docs/public-projections.md)).
+- **A listening model or an agent.** It runs neither. The one model it can use, CLAP for acoustic
+  retrieval, is optional and runs in a separate offline process. Without it, memory and every other
+  workflow still work ([acoustic retrieval](docs/acoustic-retrieval.md)).
+- **Audio in a transfer.** A bundle carries records and their original audio locators. It does not
+  copy external audio or claim that the audio becomes available
+  ([bundles and score](docs/bundles-and-score.md)).
 
 ## License
 
