@@ -125,7 +125,7 @@ that protocol, not a fork of it.
 
 | Component | Version / contract | Relationship |
 | --- | --- | --- |
-| [Earworm](https://github.com/sonicfieldlabs/earworm) | `akousma 0.8.1` / spec v1.8 | Canonical store, no-audio listening accounts, listener-type/class indexes, and additive revision chains. |
+| [Earworm](https://github.com/sonicfieldlabs/earworm) | `akousma >=0.8.3` / spec v1.8 | Canonical store with checked object resolution, no-audio listening accounts, listener-type/class indexes, and additive revision chains. |
 | [AKOÚŌ](https://github.com/sonicfieldlabs/akouo) | `akouo/v0.9` | Owns claim taxonomy, provenance, temporal passes, route decisions, corpus disclosure, and situated context rendered by the navigator. |
 | [OÍDA](https://github.com/sonicfieldlabs/oida) | 0.11.0 / `oida/gateway/v0.6` | Writes typed machine and human listening records, links related accounts, and embeds the navigator at `/library/`. |
 | [GERM](https://github.com/sonicfieldlabs/germ) | 0.3.3 (optional) | Receives explicit sound, prompt, and lineage handoffs when separately configured. |
@@ -135,7 +135,7 @@ that protocol, not a fork of it.
 ## Run
 
 ```sh
-pip install -e .   # installs the canonical akousma dependency too
+pip install --find-links vendor -e .  # reviewed local candidate dependencies
 akousmata          # http://127.0.0.1:5180
 ```
 

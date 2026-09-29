@@ -9,10 +9,13 @@ resolution-markers = [
 [[package]]
 name = "akouo-contract"
 version = "0.10.0"
-source = { directory = "../akouo" }
+source = { path = "vendor/akouo_contract-0.10.0-py3-none-any.whl" }
 dependencies = [
     { name = "jsonschema" },
     { name = "referencing" },
+]
+wheels = [
+    { filename = "akouo_contract-0.10.0-py3-none-any.whl", hash = "sha256:36c45fa83473744b5e3e55a914238e2aa55b9de4fae74f3a546b20994c2f2993" },
 ]
 
 [package.metadata]
@@ -23,11 +26,14 @@ requires-dist = [
 
 [[package]]
 name = "akousma"
-version = "0.8.1"
-source = { editable = "../earworm/packages/py-akousma" }
+version = "0.8.3"
+source = { path = "vendor/akousma-0.8.3-py3-none-any.whl" }
 dependencies = [
     { name = "jsonschema" },
     { name = "referencing" },
+]
+wheels = [
+    { filename = "akousma-0.8.3-py3-none-any.whl", hash = "sha256:cd1349b6cb15ead974416e626d19555ef79f3482df24441dd53156fa479f07f0" },
 ]
 
 [package.metadata]
@@ -40,9 +46,10 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "akousmata"
-version = "0.8.1"
+version = "0.8.2"
 source = { editable = "." }
 dependencies = [
+    { name = "akouo-contract" },
     { name = "akousma" },
     { name = "fastapi" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
@@ -54,7 +61,6 @@ dependencies = [
 
 [package.optional-dependencies]
 dev = [
-    { name = "akouo-contract" },
     { name = "httpx" },
     { name = "httpx2" },
     { name = "jsonschema" },
@@ -63,8 +69,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "akouo-contract", marker = "extra == 'dev'", directory = "../akouo" },
-    { name = "akousma", editable = "../earworm/packages/py-akousma" },
+    { name = "akouo-contract", path = "vendor/akouo_contract-0.10.0-py3-none-any.whl" },
+    { name = "akousma", path = "vendor/akousma-0.8.3-py3-none-any.whl" },
     { name = "fastapi", specifier = ">=0.139" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27" },
     { name = "httpx2", marker = "extra == 'dev'", specifier = ">=2.12,<3" },

@@ -580,7 +580,7 @@ def resolve_audio_path(store, record: dict[str, Any]) -> Path | None:
             return None
     uri = str((record.get("audio") or {}).get("uri") or "")
     if uri.startswith("akousmata://"):
-        path = store.resolve_uri(uri)
+        path = store.resolve_uri(uri, content_hash=(record.get("audio") or {}).get("content_hash"))
         return path if path is not None and path.exists() else None
     if uri.startswith("file://"):
         path = Path(uri[7:])
