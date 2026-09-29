@@ -11,7 +11,7 @@ from akousmata_app import publication
 CONTRACTS = ["earworm/listening-memories/v1", "earworm/akousma/v1.6", "earworm/akousma/v1.7", "earworm/akousma/v1.8"]
 
 
-@pytest.fixture(params=["1.7.0", "1.8.0"])
+@pytest.fixture(params=["1.6.0", "1.7.0", "1.8.0"])
 def case(tmp_path, monkeypatch, request):
     monkeypatch.setenv("AKOUSMATA_PATH", str(tmp_path / "source"))
     with AkousmataStore(tmp_path / "source") as source, AkousmataStore(tmp_path / "target") as target:
@@ -114,7 +114,7 @@ def test_graph_import_uses_current_masa_validator(case, monkeypatch):
 
 
 def test_private_copy_preserves_unknown_consent_but_public_export_stays_gated(case):
-    source, _, record = case
+    source, target, record = case
     record['provenance'].pop('consent_status')
     source.put(record, supported_versions=[record["schema_version"]])
     before = deepcopy(source.get(record['akousma_id']))
@@ -125,5 +125,45 @@ def test_private_copy_preserves_unknown_consent_but_public_export_stays_gated(ca
         assert json.loads(archive.read(manifest['entries'][0]['path'])) == before
         assert set(archive.namelist()) == {'manifest.json', manifest['entries'][0]['path']}
     assert source.get(record['akousma_id']) == before
+    receipt = import_bundle(target, data, supported_contracts=CONTRACTS)
+    assert receipt["grants_imported"] is False
+    assert target.get(record["akousma_id"]) == before
+    assert publication.public_record(target, record["akousma_id"]) is None
     with pytest.raises(ValueError, match='not exportable'):
         pack(source, record, disclosure='public-projection')
+
+
+@pytest.mark.parametrize("validity", [
+    {"status": "unknown", "reason": "No currency evidence"},
+    {"status": "expires", "issued_at": "2020-01-01T00:00:00Z", "expires_at": "2021-01-01T00:00:00Z"},
+    {"status": "expires", "issued_at": "2099-01-01T00:00:00Z", "expires_at": "2100-01-01T00:00:00Z"},
+])
+def test_private_restoration_preserves_historical_receiving_claims(tmp_path, monkeypatch, validity):
+    monkeypatch.setenv("AKOUSMATA_PATH", str(tmp_path / "source"))
+    record = json.loads((Path(__file__).parent / "fixtures/access-observation.json").read_text())
+    record["provenance"]["consent_status"] = "owned"
+    record["extensions"]["earworm_listening_context"]["claims"][0]["validity"] = validity
+    before = deepcopy(record)
+    with AkousmataStore(tmp_path / "source") as source, AkousmataStore(tmp_path / "target") as target:
+        source.put(record)
+        data = pack(source, record)
+        receipt = import_bundle(target, data, supported_contracts=CONTRACTS)
+        assert receipt["admission"] == "private-restoration"
+        assert receipt["grants_imported"] is False
+        assert target.get(record["akousma_id"]) == before
+        assert publication.public_record(target, record["akousma_id"]) is None
+        with pytest.raises(ValueError):
+            publication.grant(target, record["akousma_id"], ["summary"])
+        with pytest.raises(ValueError, match="not exportable"):
+            pack(target, record, disclosure="public-projection")
+        target.forget(record["akousma_id"])
+        with pytest.raises(ValueError, match="forgetting"):
+            import_bundle(target, data, supported_contracts=CONTRACTS)
+
+
+def test_private_restore_never_transfers_source_publication_grant(case):
+    source, target, record = case
+    publication.grant(source, record["akousma_id"], ["summary"])
+    import_bundle(target, pack(source, record), supported_contracts=CONTRACTS)
+    assert publication.public_record(target, record["akousma_id"]) is None
+    assert publication.grant_status(target, record["akousma_id"])["state"] == "unpublished"

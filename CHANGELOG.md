@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- After the 0.8.2 wheel Khipu vendors: private bundle import is restoration,
+  not publication admission. Unknown consent and expired, future or unknown
+  receiving claims stay in the restored record; the receiving store's forgetting
+  ledger still refuses; receipts say `admission: private-restoration` and
+  `grants_imported: false`. `python -m akousmata_app.server` now registers every
+  route before it starts. The version still reads 0.8.2; the next wheel needs
+  its own number.
 - Reused the consent-aware pack pipeline with an explicit metadata allowlist.
   JSONL, wiki and previews share projections; unknown fields and unselected
   lineage cannot reappear. Exclusion details stay in the owner response, with

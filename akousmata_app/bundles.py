@@ -1,4 +1,4 @@
-"""E17 owner export/import over existing consent, projection and store services."""
+"""Private restoration preserves history; public projections require current grants."""
 
 from __future__ import annotations
 import hashlib
@@ -214,8 +214,11 @@ def import_bundle(store, data, *, supported_contracts):
             # Validate admission before any writes; never downgrade evidence.
             from akousma.spectral import admit_record
             admit_record(record, supported_versions=["1.8.0"])
-        if store.forgotten(entry["id"]) or not exportable(record)[0]:
-            raise ValueError("Current forgetting ledger or consent refuses import")
+        # Private restoration is not disclosure admission. Keep the source's
+        # historical consent and receiving claims without inventing rights.
+        # The receiver's current forgetting ledger remains authoritative.
+        if store.forgotten(entry["id"]):
+            raise ValueError("Current forgetting ledger refuses import")
         old = store.get(entry["id"])
         if old is not None and old != record:
             raise ValueError("Canonical identity/hash conflict")
@@ -308,6 +311,8 @@ def import_bundle(store, data, *, supported_contracts):
         created_at=claim_clock(),
         records=results,
         grants_imported=False,
+        admission="private-restoration",
+        publication="requires-current-local-grant-and-consent",
     )
     root = Path(store.root) / "bundle-receipts"
     root.mkdir(parents=True, exist_ok=True)

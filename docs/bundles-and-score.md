@@ -13,12 +13,27 @@ and public grants are checked again before publication. No export creates a gran
 
 Import accepts bounded `archive_base64` plus `supported_contracts`. Explicitly
 negotiate the bundle contract and each required reader contract, for example
-`earworm/akousma/v1.6` and `earworm/akousma/v1.7`. The ZIP boundary is 32 MiB,
+`earworm/akousma/v1.6`, `earworm/akousma/v1.7` and `earworm/akousma/v1.8`. The ZIP boundary is 32 MiB,
 129 members including its manifest, and no unlisted or duplicate members. Paths
 are validated and members are read without filesystem extraction. All payload
-hashes, canonical identities, references and current consent/forgetting checks
+hashes, canonical identities, references and current forgetting checks
 precede writes. Revision dependencies are ordered. Same-ID identical records
 reuse; changed identities refuse. Imports never install publication grants.
+
+Private import is restoration, not publication admission. Unknown consent and
+expired, future or unknown receiving claims remain part of the original canonical
+record; restoration does not rewrite them or establish current validity. A receiving
+store's forgetting ledger still refuses restoration. Publication requires a current
+local grant and the existing consent/current-claim checks. Import receipts identify
+`admission: private-restoration` and `grants_imported: false`.
+
+Private canonical bundles support round trips for negotiated 1.6/1.7/1.8 records,
+subject to the same owner validation and reference closure as record intake.
+Spectral records still need their locally admissible objects; the archive does not
+install external objects or validators. Public-projection bundles are for reading,
+not canonical restoration: their sanitized payloads cannot replace the source records
+and are refused by canonical import. Negotiating a reader contract alone does not
+make a projection, generated asset pack or incomplete dependency set importable.
 
 Graph records additionally require the owner-selected installed
 `AKOUSMATA_MASA_VALIDATOR_MODULE` and `AKOUSMATA_MASA_CORE_MODULE`. The shared
@@ -45,6 +60,6 @@ explicit. Missing clocks remain unknown. Authorized forgetting invalidates K10
 captures instead of allowing their old content to return.
 
 Local tests cover private/unknown-extension preservation, public grant scope,
-1.6/1.7 negotiation, identity and hash conflicts, malformed archives, graph import
+1.6/1.7/1.8 negotiation, identity and hash conflicts, malformed archives, graph import
 with actual MASA validation, current forgetting, score clocks and source gaps.
 No physical sensing or improved perceptual access is inferred.

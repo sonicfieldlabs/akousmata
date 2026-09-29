@@ -1406,10 +1406,6 @@ def main() -> None:
     uvicorn.run(app, host=os.getenv("AKOUSMATA_HOST", "127.0.0.1"), port=int(os.getenv("AKOUSMATA_PORT", "5180")))
 
 
-if __name__ == "__main__":
-    main()
-
-
 @app.get("/api/records/{akousma_id}/relations/indexed")
 def indexed_relations(akousma_id: str, limit: int = 50, cursor: str | None = None, rel_type: str | None = None):
     from akousmata_app.relation_index import page
@@ -1562,3 +1558,7 @@ def model_ecology_capabilities():
 
 from akousmata_app.acoustic.api import router as acoustic_router
 app.include_router(acoustic_router)
+
+
+if __name__ == "__main__":
+    main()
