@@ -1,3 +1,5 @@
+# Fixture copies from sonicfieldlabs/earworm at c35bf9f6ad021d4aae7944840389ed6b64c6c844.
+# Their MPL-2.0 license is retained in fixtures/earworm/LICENSE.
 import io
 
 import numpy as np
@@ -63,7 +65,7 @@ def test_record_grant_required_and_expiry_is_checked(tmp_path):
     from pathlib import Path
     from akousma import AkousmataStore
     from akousmata_app.derivatives import grant_derivatives, read_derivative
-    root = Path(__file__).resolve().parents[2] / 'earworm/tests/contracts'
+    root = Path(__file__).parent / 'fixtures/earworm'
     record = json.loads((root / 'evolution/research.json').read_text())
     bundle = json.loads((root / 'spectral/bundle.json').read_text())
     record['schema_version'] = '1.8.0'
@@ -110,7 +112,7 @@ def test_publication_rollback_and_crash_recovery(tmp_path):
     from pathlib import Path
     from akousma import AkousmataStore
     from akousmata_app.derivatives import publish_bundle, recover_derivatives, read_derivative
-    root = Path(__file__).resolve().parents[2] / 'earworm/tests/contracts'
+    root = Path(__file__).parent / 'fixtures/earworm'
     record = json.loads((root / 'evolution/research.json').read_text())
     bundle = json.loads((root / 'spectral/bundle.json').read_text())
     record['schema_version'] = '1.8.0'
