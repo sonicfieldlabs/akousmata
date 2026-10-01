@@ -1,9 +1,15 @@
 # Never track personal listening memory if AKOUSMATA_PATH targets this checkout.
 index.sqlite
 index.sqlite-*
+acoustic.sqlite3
+acoustic.sqlite3-*
 objects/
 wiki/
 settings.json
+/.settings.lock
+/.settings-*.tmp
+/.spectral-transactions/
+/bundle-receipts/
 exports/
 constellations.json
 watcher-state.json
@@ -26,3 +32,24 @@ dist/
 !.env.example
 .DS_Store
 *.log
+
+# Runtime derivative lock (not source)
+.derivatives.lock
+
+# Private local output; maintained fixtures remain in their source directories
+/audits/
+/local-plans/
+/reports/
+/screenshots/
+/receipts/
+/recordings/
+/captures/
+/output/
+/runtime/
+/settings.json
+/*.sqlite
+/*.sqlite-*
+/*.sqlite3
+/*.sqlite3-*
+/*.db
+/docs/audits/

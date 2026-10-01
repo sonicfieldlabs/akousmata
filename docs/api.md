@@ -23,7 +23,9 @@ Local endpoints (default http://127.0.0.1:5180, env `AKOUSMATA_PORT`/`AKOUSMATA_
 - `POST /api/diary` / `GET /api/diary/{day}` — quick capture (`{text, tags?, place?, location?, heard?}`) and maintained daily digest. `heard` defaults false so diary prose alone is not a hearing claim.
 - `GET /api/audit/accountability` — accountable/legacy coverage, route and stop decisions, decision-only records, plural-listening and explicitly declared ear-swarm counts, forgetting receipts, disagreement/revision coverage, and attributable structural issues. It audits record shape; it does not adjudicate claims.
 - `GET /api/audit/consent` / `POST /api/records/{id}/consent` — consent, rights notes, capture conditions, and exportability.
-- `POST /api/export` / `GET /api/exports` — sanitized selection packs with wiki/audio files, exclusions, consent gate, and manifest.
+- `POST /api/export` / `GET /api/exports` — allowlisted metadata packs with matching wiki pages, optional owner-selected audio and a manifest. Accepts `audience: selection|public` and `fields`; public packs require current grants and omit audio. Exclusions remain owner-only.
+- `GET/POST/DELETE /api/records/{id}/publication` — local owner grant status, explicit selected-field approval (`{fields: [...]}`), and revocation.
+- `GET /api/public/records`, `GET /api/public/records/{id}`, `GET /api/public/status` — grant-filtered metadata pages, single projections and counts. These are the only routes in the reusable `public_router`; see [public projections](public-projections.md) for contracts, filters and integration boundaries.
 - `POST /api/records/{id}/listen-again` — fresh Oída gateway pass filed as a new akousma v1.5 revision with pass/provenance/decision references, `same_source_as` kinship, and `auditum.revision.revises_akousma_id`. The source record is not mutated; a pre-listening refusal is returned as a route outcome and never converted into a hearing.
 - `GET /api/germ-link/{id}?mode=sound|prompt|lineage` — optional GERM deep link; returns 409 until a URL is explicitly configured.
 - `GET /api/wiki` · `GET /api/wiki/page/{kind}/{name}` · `POST /api/wiki/rebuild` · `POST /api/wiki/ingest/{id}` · `GET /api/wiki/lint`.
@@ -31,3 +33,25 @@ Local endpoints (default http://127.0.0.1:5180, env `AKOUSMATA_PORT`/`AKOUSMATA_
 - `GET /api/events` — SSE store watch (new records).
 - `GET /api/watcher` / `POST /api/watcher/run` — scheduled-maintenance status and immediate reconciliation/lint.
 - `GET/PUT /api/settings` — germ/oída URLs, watcher intervals, and BYOK LLM config (key masked in reads; stored only in local settings.json).
+
+### Owner listening relationships
+
+`GET /api/records/{id}/listening-relations` returns the derived owner projection,
+with `limit` (1–200) and a source-bound `cursor`. Changed references return 409.
+See [listening relationships](listening-relations.md) for attribution and disclosure limits.
+
+Owner-only indexed relations and canonical research proposals, additive reviews,
+durable SSE review pages, changed-record reconciliation and acknowledgment are
+specified in [research-proposals.md](research-proposals.md). These reuse the existing
+store/research service; public projection fields remain unchanged.
+
+Owner [qualified facets and access views](access-facets.md) add `/api/facets`, five
+composable record filters and the unmodified `access_view` detail projection.
+
+### Explicit graph captures
+
+`POST /api/graph/snapshots` accepts `{ "focus": null, "depth": 3, "limit": 120 }`.
+`GET /api/graph/snapshots?after=0&limit=50` returns ordered capture events and
+`next_after`; `GET /api/graph/snapshots/{event_id}` replays one capture under current
+restrictions. Invalid bounds return 400; concurrent capture changes or forgotten
+snapshot content return 409. See [graph history](graph-history.md) for bounds and scope.

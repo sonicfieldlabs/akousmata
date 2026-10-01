@@ -1,5 +1,40 @@
 # Changelog
 
+## Unreleased
+
+- Package 0.8.3 with owner request admission and atomic validated settings.
+- Enforced owner host and mutation-origin admission across the application,
+  preserving workspace binding. Default access requires loopback clients;
+  non-loopback startup requires explicit allowed hosts and bearer authentication.
+  Forwarded authority headers are rejected and Uvicorn proxy interpretation is
+  disabled.
+- Validate settings before applying any part of a patch. Saves now serialize
+  thread/process updates and atomically replace private files; malformed stored
+  fields fall back safely while other valid fields survive. Invalid requests
+  return diagnostics without echoing private input or non-finite values.
+- Report keyless OpenAI-compatible endpoints as configured when a model is set,
+  matching the existing completion adapter's local-provider support.
+- Exclude private transaction directories, bundle receipts and settings staging
+  files from repository-local Git candidates.
+
+- After the bundled 0.8.2 wheel: private bundle import is restoration,
+  not publication admission. Unknown consent and expired, future or unknown
+  receiving claims stay in the restored record; the receiving store's forgetting
+  ledger still refuses; receipts say `admission: private-restoration` and
+  `grants_imported: false`. `python -m akousmata_app.server` now registers every
+  route before it starts. The version still reads 0.8.2; the next wheel needs
+  its own number.
+- Reused the consent-aware pack pipeline with an explicit metadata allowlist.
+  JSONL, wiki and previews share projections; unknown fields and unselected
+  lineage cannot reappear. Exclusion details stay in the owner response, with
+  a count stored outside the shareable archive.
+- Added host-owned, field-scoped public grants bound to current source content,
+  with revocation and consent rechecks. Imported metadata grants no authority.
+- Added a separately mountable public router for projected records, filtered
+  pagination and counts. Owner APIs remain local and private. Package and
+  released akousma contract versions are unchanged.
+- Fixed the calendar-season test to use a fixed creation date.
+
 ## 0.7.0 — Human and Machine Listening Accounts
 
 - Added stable local human profiles with optional shared display names and

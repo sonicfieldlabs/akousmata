@@ -35,8 +35,9 @@ except ModuleNotFoundError:
 class NavigatorTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        os.environ["AKOUSMATA_PATH"] = self.tmp.name
-        os.environ["AKOUSMATA_WATCHER"] = "0"
+        self.env = patch.dict(os.environ, {"AKOUSMATA_PATH": self.tmp.name, "AKOUSMATA_WATCHER": "0"})
+        self.env.start()
+        self.addCleanup(self.env.stop)
         store = akousma.AkousmataStore(self.tmp.name)
         parent = akousma.new_akousma(
             audio={"asset_id": "cap_1"},
@@ -47,6 +48,7 @@ class NavigatorTests(unittest.TestCase):
             listening={"oida.signal": {"created_at": "2026-07-10T00:00:00Z", "payload": {"caption": "low machinery hum"}}},
             tags=["harbor", "field"],
         )
+        parent["created_at"] = "2026-07-10T00:00:00Z"
         store.put(parent)
         child = akousma.new_akousma(
             audio={"asset_id": "gen_1"},
@@ -58,17 +60,16 @@ class NavigatorTests(unittest.TestCase):
             prompt="metallic harbor",
             tags=["harbor"],
         )
+        child["created_at"] = "2026-07-10T01:00:00Z"
         store.put(child)
         store.close()
         self.parent_id = parent["akousma_id"]
         self.child_id = child["akousma_id"]
 
         from akousmata_app.server import app
-        self.client = TestClient(app)
+        self.client = TestClient(app, base_url="http://127.0.0.1", client=("127.0.0.1", 50000))
 
     def tearDown(self):
-        os.environ.pop("AKOUSMATA_PATH", None)
-        os.environ.pop("AKOUSMATA_WATCHER", None)
         self.tmp.cleanup()
 
     def _manual_with_audio(self, summary="rain on the skylight", tags=("rain",)):
@@ -770,8 +771,8 @@ class NavigatorTests(unittest.TestCase):
         try:
             parent = store.get(self.parent_id)
             child = store.get(self.child_id)
-            parent.setdefault("extensions", {}).setdefault("akousmata.app", {})["embedding"] = [1.0, 0.0, 0.5]
-            child.setdefault("extensions", {}).setdefault("akousmata.app", {})["embedding"] = [0.9, 0.1, 0.45]
+            parent.setdefault("extensions", {}).setdefault("akousmata.app", {})["embedding"] = {"space": dict(model="test/encoder", revision="a"*40, preprocessing_sha256="b"*64, dimensions=3, pooling="mean", metric="cosine"), "vector": [1.0, 0.0, 0.5]}
+            child.setdefault("extensions", {}).setdefault("akousmata.app", {})["embedding"] = {"space": dict(model="test/encoder", revision="a"*40, preprocessing_sha256="b"*64, dimensions=3, pooling="mean", metric="cosine"), "vector": [0.9, 0.1, 0.45]}
             store.put(parent)
             store.put(child)
         finally:
@@ -878,7 +879,7 @@ class NavigatorTests(unittest.TestCase):
 
         # Non-network URL schemes are rejected before urllib can open them.
         self.client.put("/api/settings", json={"oida_url": "file:///etc/passwd"})
-        with patch("urllib.request.urlopen") as urlopen:
+        with patch("akousmata_app.server._owner_open") as urlopen:
             response = self.client.post(f"/api/records/{record['akousma_id']}/listen-again", json={})
         self.assertEqual(response.status_code, 422)
         urlopen.assert_not_called()
@@ -934,10 +935,10 @@ class NavigatorTests(unittest.TestCase):
             def __exit__(self, *_args):
                 return False
 
-            def read(self):
+            def read(self, *_args):
                 return json.dumps(gateway).encode("utf-8")
 
-        with patch("urllib.request.urlopen", return_value=Response()):
+        with patch("akousmata_app.server._owner_open", return_value=Response()):
             response = self.client.post(f"/api/records/{record['akousma_id']}/listen-again", json={"preset": "field"})
         self.assertEqual(response.status_code, 200, response.text)
         body = response.json()
@@ -983,10 +984,10 @@ class NavigatorTests(unittest.TestCase):
             def __exit__(self, *_args):
                 return False
 
-            def read(self):
+            def read(self, *_args):
                 return json.dumps(gateway).encode("utf-8")
 
-        with patch("urllib.request.urlopen", return_value=Response()):
+        with patch("akousmata_app.server._owner_open", return_value=Response()):
             response = self.client.post(f"/api/records/{record['akousma_id']}/listen-again", json={})
         self.assertEqual(response.status_code, 423, response.text)
         detail = response.json()["detail"]

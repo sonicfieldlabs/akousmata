@@ -193,8 +193,13 @@ def list_records(
     record_class_filter: str | None = None,
     revision_of: str | None = None,
     limit: int = 200,
+    facets: dict[str, str] | None = None,
+    offset: int = 0,
+    oldest_first: bool = False,
 ) -> list[dict[str, Any]]:
     kwargs: dict[str, Any] = {}
+    if offset or oldest_first:
+        kwargs.update(offset=offset, oldest_first=oldest_first)
     if covenant_id is not None:
         # py-akousma >= 0.4; older stores simply have no covenant column
         kwargs["covenant_id"] = covenant_id
@@ -214,6 +219,13 @@ def list_records(
         kwargs["record_class"] = record_class_filter
     if revision_of is not None:
         kwargs["revision_of"] = revision_of
+    if facets:
+        if offset or oldest_first:
+            raise ValueError("Access-facet queries do not support pagination or date sorting")
+        from akousmata_app.access_view import find
+        if listener_type is not None and listener_type not in _akousma().AUDITUM_LISTENER_TYPES:
+            raise ValueError("Unknown listener type")
+        return find(store, facets, locals(), limit)
     found = store.query(
         originating_app=app,
         origin=origin,
@@ -320,7 +332,11 @@ def detail(store, akousma_id: str, *, local_listener_id: str | None = None) -> d
     audio_path = resolve_audio_path(store, record)
     lifecycle = revision_lifecycle(store, akousma_id)
     owned = owned_human_record(record, local_listener_id)
+    from akousmata_app.listening_relations import project
+    from akousmata_app.access_view import project as access_project
     return {
+        "access_view": access_project(record),
+        "listening_relations": project(record, store.get),
         "record": record,
         "card": card(record, lifecycle=lifecycle, local_listener_id=local_listener_id),
         "summary": summary_line(record),
@@ -556,9 +572,15 @@ def _ref_summary(store, akousma_id: str | None) -> str:
 
 
 def resolve_audio_path(store, record: dict[str, Any]) -> Path | None:
+    if 'oida.spectral' in record.get('extensions', {}):
+        from akousmata_app.derivatives import authorized_bundle
+        try:
+            authorized_bundle(store, record['akousma_id'])
+        except ValueError:
+            return None
     uri = str((record.get("audio") or {}).get("uri") or "")
     if uri.startswith("akousmata://"):
-        path = store.resolve_uri(uri)
+        path = store.resolve_uri(uri, content_hash=(record.get("audio") or {}).get("content_hash"))
         return path if path is not None and path.exists() else None
     if uri.startswith("file://"):
         path = Path(uri[7:])
@@ -1147,6 +1169,9 @@ def set_consent(store, akousma_id: str, consent_status: str, rights_note: str | 
             record["provenance"].pop("rights_note", None)
     record.setdefault("extensions", {}).setdefault("akousmata.app", {})["consent_set_by"] = "human"
     store.put(record)
+    # A later rights assertion must not silently revive an earlier public grant.
+    from akousmata_app.publication import revoke
+    revoke(store, akousma_id)
     return record
 
 

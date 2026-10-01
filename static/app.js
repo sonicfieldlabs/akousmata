@@ -76,6 +76,32 @@ $("tabs").addEventListener("click", (event) => {
 
 /* ── library ──────────────────────────────────────────────────────────── */
 
+const ACCESS_FACETS = ["subject", "recipient", "human_access", "register", "scale"];
+const LISTENER_GLYPHS = {human:"○",agent:"◇",hybrid:"◈",community:"◎",institution:"▤",sensor:"⌁",habitat:"▧",other_animal:"△",ensemble:"⋈",other:"◌"};
+function listenerBadge(kind) {
+  const badge = el("span", "minitag");
+  const glyph = el("span", "", LISTENER_GLYPHS[kind] || "?");
+  glyph.setAttribute("aria-hidden", "true");
+  badge.append(glyph, document.createTextNode(" " + kind.replaceAll("_", " ")));
+  return badge;
+}
+async function loadFacets() {
+  const {facets} = await api("/api/facets");
+  for (const kind of ACCESS_FACETS) {
+    const select = $("f-" + kind), current = select.value;
+    select.replaceChildren(el("option", "", "every " + kind.replaceAll("_", " ")));
+    select.firstChild.value = "";
+    for (const item of facets[kind] || []) {
+      const option = el("option", "", `${item.value} (${item.count})`);
+      option.value = item.value; select.append(option);
+    }
+    if (current && !Array.from(select.options).some(o => o.value === current)) {
+      const option = el("option", "", `${current} (no current records)`); option.value=current; select.append(option);
+    }
+    select.value=current;
+  }
+}
+
 function filterParams() {
   const params = new URLSearchParams();
   const text = $("f-text").value.trim();
@@ -84,13 +110,17 @@ function filterParams() {
   if ($("f-origin").value) params.set("origin", $("f-origin").value);
   if ($("f-class").value) params.set("record_class", $("f-class").value);
   if ($("f-listener").value) params.set("listener_type", $("f-listener").value);
+  for (const kind of ACCESS_FACETS) if ($("f-" + kind).value) params.set(kind, $("f-" + kind).value);
   if (state.activeTag) params.set("tag", state.activeTag);
   if (state.activeCovenant) params.set("covenant", state.activeCovenant);
   return params;
 }
 
+let recordLoadSequence = 0;
 async function loadRecords() {
+  const sequence = ++recordLoadSequence;
   const data = await api(`/api/records?${filterParams()}`);
+  if (sequence !== recordLoadSequence) return;
   state.records = data.records;
   const covenantChip = $("covenant-chip");
   covenantChip.replaceChildren();
@@ -116,7 +146,7 @@ async function loadRecords() {
     if (record.origin) line2.append(el("span", "badge", record.origin));
     line2.append(el("span", `badge record-${record.record_class || "legacy"}`, (record.record_class || "legacy").replaceAll("_", " ")));
     for (const listenerType of record.listener_types || []) {
-      const typeBadge = el("span", "minitag", listenerType.replaceAll("_", " "));
+      const typeBadge = listenerBadge(listenerType);
       typeBadge.title = "declared by auditum.listenings[].listener_type";
       line2.append(typeBadge);
     }
@@ -202,7 +232,7 @@ function renderDetail(data) {
   pane.append(el("div", "mono note", record.akousma_id));
   const identityRow = el("div", "row");
   identityRow.append(el("span", `badge record-${data.card?.record_class || "legacy"}`, (data.card?.record_class || "legacy").replaceAll("_", " ")));
-  for (const listenerType of data.card?.listener_types || []) identityRow.append(el("span", "minitag", listenerType.replaceAll("_", " ")));
+  for (const listenerType of data.card?.listener_types || []) identityRow.append(listenerBadge(listenerType));
   if (data.human_record?.owned_locally) identityRow.append(el("span", "minitag", data.human_record.editable ? "my current human head" : "my preserved earlier revision"));
   pane.append(identityRow);
 
@@ -430,6 +460,83 @@ function renderDetail(data) {
       covSection.append(el("div", "note", `${cov.commitments} commitment${cov.commitments === 1 ? "" : "s"} carried with the covenant`));
     }
     pane.append(covSection);
+  }
+
+  const relations = data.listening_relations;
+  if (relations?.nodes?.length) {
+    const section = el("div", "section listening-relations");
+    section.append(el("h2", "", "who listened to whom"));
+    section.append(el("p", "note", relations.independent ? "Independent retained passes · no redirection recorded." : "Retained inputs and attributed connections · no influence inferred from scheduling."));
+    const labels = new Map();
+    for (const node of relations.nodes) {
+      const box = el("div", "listening-entry");
+      const label = node.kind === "listening" ? `${node.participant_id || "unknown participant"} · ${node.participant_type || "unknown type"}` : `retained record · ${node.record_id}`;
+      labels.set(node.id, label);
+      box.append(el("div", "ns", label));
+      if (node.kind === "listening") {
+        box.append(el("div", "note", `pass ${node.pass_id} · listening ${node.listening_id}`));
+        if (node.report_ref) box.append(el("div", "note", `report ${node.report_ref}`));
+        if (node.categories?.length) box.append(el("div", "note", `original categories: ${node.categories.join(", ")}`));
+      } else {
+        box.append(el("div", "note", node.status.replaceAll("_", " ")));
+        if (["canonical", "canonical_changed"].includes(node.status)) {
+          const open = el("button", "btn", "open canonical record");
+          open.addEventListener("click", () => selectRecord(node.record_id));
+          box.append(open);
+        }
+      }
+      section.append(box);
+    }
+    for (const edge of relations.edges) {
+      const box = el("div", "listening-entry");
+      box.append(el("div", "ns", edge.kind.replaceAll("_", " ")));
+      box.append(el("div", "", `${labels.get(edge.source) || edge.source} → ${labels.get(edge.target) || edge.target}`));
+      if (edge.effect) box.append(el("div", "", edge.effect));
+      box.append(el("div", "note", edge.basis));
+      if (edge.evidence?.length) {
+        const details = el("details");
+        details.append(el("summary", "", "inspect retained decision trace"));
+        for (const trace of edge.evidence) {
+          details.append(el("p", "note", `trace ${trace.trace_id} · ${trace.before_decision_ref} → ${trace.after_decision_ref}`));
+          details.append(el("p", "note", trace.basis || "Retained attribution; not independent causal verification."));
+        }
+        box.append(details);
+      }
+      section.append(box);
+    }
+    for (const issue of relations.issues) section.append(el("p", "note", `Unresolved: ${issue}`));
+    pane.append(section);
+  }
+
+  const accessView = data.access_view;
+  if (accessView) {
+    const section = el("section", "section access-view");
+    section.append(el("h2", "", "Apparatus and human access"), el("p", "note", accessView.limitation));
+    const declaration = accessView.declaration || {};
+    const table = el("table", "access-table");
+    table.append(el("caption", "", "Retained declarations and their qualifications"));
+    const head=el("tr"); for (const title of ["Declaration", "Status", "Coverage, conditions and references"]) { const cell=el("th","",title);cell.scope="col";head.append(cell); }
+    const thead=el("thead");thead.append(head);table.append(thead);
+    const tbody=el("tbody");
+    const rows=[["Capture",declaration.capture],["Sampled representation",declaration.sampled_representation],["Model input",declaration.model_input],...(declaration.human_access?.length ? declaration.human_access.map((v,i)=>[`Human access ${i+1}`,v]) : [["Human access",null]])];
+    for (const [label,value] of rows) {
+      const tr=el("tr"), th=el("th","",label);th.scope="row";tr.append(th,el("td","",(value?.status || "undeclared").replaceAll("_", " ")));
+      const td=el("td");
+      for (const [key,v] of Object.entries(value || {reason:"No retained declaration supplied"})) if(key!=="status") td.append(el("div","",`${key.replaceAll("_"," ")}: ${typeof v === "string" ? v : JSON.stringify(v)}`));
+      tr.append(td);tbody.append(tr);
+    }
+    table.append(tbody);section.append(table);
+    if (accessView.matter_context) {
+      const matter=accessView.matter_context;
+      section.append(el("p","",`Registers: ${matter.registers.join(", ")} · Scales: ${matter.scales.join(", ")}`));
+      section.append(el("p","note","These contextual dimensions also describe non-acoustic material; they are not a universal frequency × timescale map."));
+    }
+    for (const context of accessView.contexts) {
+      section.append(el("p","",`Listening ${context.listening_ref} · subject ${context.subject_ref}`));
+      section.append(el("p","note",`Recipients: ${(context.recipients || []).map(r=>r.id+" · "+r.type).join(", ") || "undeclared"}`));
+      section.append(el("p","note",`Declared renderings: ${JSON.stringify(context.renderings || [])}`));
+    }
+    const original=el("details");original.append(el("summary","","Inspect original access and context payloads"),el("pre","mono",JSON.stringify({access:accessView.declaration,contexts:accessView.contexts,matter_context:accessView.matter_context},null,2)));section.append(original);pane.append(section);
   }
 
   // Accountable auditum (spec v1.6). This is an index over producer-owned
@@ -774,7 +881,7 @@ function renderDetail(data) {
   pane.append(conRow);
 }
 
-for (const id of ["f-text", "f-app", "f-origin", "f-class", "f-listener"]) {
+for (const id of ["f-text", "f-app", "f-origin", "f-class", "f-listener", ...ACCESS_FACETS.map(k => "f-" + k)]) {
   $(id).addEventListener(id === "f-text" ? "input" : "change", () => loadRecords());
 }
 function openHumanForm(responseTo = "") {
@@ -1181,15 +1288,70 @@ $("x-build").addEventListener("click", async () => {
 
 const APP_COLORS = { oida: "#4a5a70", germ: "#5a6e4a", algophony: "#6e4a5e", akousmata: "#a9762f", unknown: "#90908a" };
 
-async function loadGraph(focus) {
-  const query = focus ? `?focus=${encodeURIComponent(focus)}&depth=2` : "?limit=300";
-  const data = await api(`/api/graph${query}`);
+let graphRequest = 0;
+let graphAfter = 0;
+function showGraph(data) {
   state.graph = data;
-  $("graph-status").textContent = `${data.nodes.length} memories · ${data.edges.length} links${data.truncated ? " (truncated)" : ""}`;
+  $("graph-status").textContent = `${data.nodes.length} memories · ${data.edges.length} links${data.truncated ? " (bounded; some links omitted)" : ""}${data.captured_at ? ` · captured ${data.captured_at}` : " · current"}${data.current_restriction_gaps ? ` · ${data.current_restriction_gaps} restricted/missing references` : ""}`;
+  const walk = $("graph-walk"); walk.replaceChildren();
+  for (const node of data.nodes) {
+    const row = document.createElement("p");
+    row.textContent = `${node.stage} · ${node.label} `;
+    if (!node.missing) {
+      const open = document.createElement("button"); open.className = "btn"; open.textContent = "open record";
+      open.addEventListener("click", () => { document.querySelector('[data-tab="library"]').click(); selectRecord(node.id); });
+      const focus = document.createElement("button"); focus.className = "btn"; focus.textContent = "walk links";
+      focus.addEventListener("click", () => loadGraph(node.id)); row.append(open, focus);
+    }
+    walk.append(row);
+  }
+  for (const edge of data.edges) {
+    const row = document.createElement("p");
+    row.textContent = `${edge.from} → ${edge.to}: ${edge.role}${edge.type ? ` (${edge.type})` : ""}${edge.gap ? ` · ${edge.gap}` : ""}`; walk.append(row);
+  }
   drawGraph();
 }
-
+async function loadGraph(focus) {
+  const request = ++graphRequest;
+  try {
+    const query = focus ? `?focus=${encodeURIComponent(focus)}&depth=3` : "?limit=300";
+    const data = await api(`/api/graph${query}`);
+    if (request === graphRequest) showGraph(data);
+  } catch (error) { if (request === graphRequest) $("graph-status").textContent = error.message; }
+}
+async function graphHistory() {
+  try {
+    const data = await api(`/api/graph/snapshots?after=${graphAfter}`);
+    for (const event of data.events) {
+      const option = document.createElement("option"); option.value = event.event_id;
+      option.textContent = `${event.event_id} · ${event.captured_at}${event.available ? "" : " · forgotten"}`;
+      option.disabled = !event.available; $("graph-history").append(option);
+    }
+    graphAfter = data.next_after;
+  } catch (error) { $("graph-status").textContent = error.message; }
+}
 $("graph-all").addEventListener("click", () => loadGraph(null));
+$("graph-more").addEventListener("click", graphHistory);
+$("graph-save").addEventListener("click", async () => {
+  const request = ++graphRequest;
+  try {
+    const data = await api("/api/graph/snapshots", {method: "POST", body: JSON.stringify({focus: state.graph?.focus || null, depth: 3, limit: 300})});
+    if (request === graphRequest) showGraph(data);
+    await graphHistory();
+  } catch (error) { $("graph-status").textContent = error.message; }
+});
+$("graph-replay").addEventListener("click", async () => {
+  const id = $("graph-history").value; if (!id) return;
+  const request = ++graphRequest;
+  try { const data = await api(`/api/graph/snapshots/${encodeURIComponent(id)}`); if (request === graphRequest) showGraph(data); }
+  catch (error) { if (request === graphRequest) { state.graph = {nodes: [], edges: []}; $("graph-walk").replaceChildren(); drawGraph(); $("graph-status").textContent = error.message; } }
+});
+graphHistory();
+let graphResizeFrame;
+window.addEventListener("resize", () => {
+  cancelAnimationFrame(graphResizeFrame);
+  graphResizeFrame = requestAnimationFrame(() => { if (state.tab === "graph" && state.graph) drawGraph(); });
+});
 
 function drawGraph() {
   const canvas = $("graph");
@@ -1797,7 +1959,7 @@ function watchChanges() {
   source.onmessage = (message) => {
     const record = JSON.parse(message.data);
     toast(`new memory: ${record.summary?.slice(0, 60) || record.akousma_id} (${record.originating_app})`);
-    if (state.tab === "library") { loadRecords(); loadTags(); }
+    if (state.tab === "library") { loadRecords(); loadTags(); loadFacets(); }
     if (state.tab === "map") loadMap();
   };
 }
@@ -1816,3 +1978,6 @@ function watchChanges() {
   await loadSettings();
   watchChanges();
 })();
+
+$("clear-facets").addEventListener("click", () => { for(const kind of ACCESS_FACETS) $("f-"+kind).value=""; loadRecords(); });
+loadFacets().catch(error => { $("f-subject").closest("details").append(el("p","note",error.message)); });
