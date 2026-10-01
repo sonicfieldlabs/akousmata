@@ -9,9 +9,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: akousmata
@@ -19,13 +24,19 @@ jobs:
       - name: Checkout Akousmata
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
+          persist-credentials: false
           path: akousmata
-      - name: Checkout Earworm
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          repository: sonicfieldlabs/earworm
-          ref: v0.7.0
-          path: earworm
-      - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081 # v5
-      - run: uv sync --extra dev
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      - name: Verify reviewed canonical dependency wheels
+        run: shasum -a 256 -c vendor/SHA256SUMS
+
+      - run: uv sync --extra dev --locked
       - run: uv run pytest -q
+      - name: Verify research in an ordinary installed runtime
+        run: |
+          uv build --wheel --out-dir "$RUNNER_TEMP/akousmata-wheel"
+          uv venv "$RUNNER_TEMP/akousmata-runtime"
+          uv pip install --python "$RUNNER_TEMP/akousmata-runtime/bin/python" \
+            --find-links vendor "$RUNNER_TEMP"/akousmata-wheel/akousmata-*.whl
+          "$RUNNER_TEMP/akousmata-runtime/bin/python" -I \
+            scripts/check_installed_research.py tests/fixtures/research-workflow.json

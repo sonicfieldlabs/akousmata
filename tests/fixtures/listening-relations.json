@@ -1,0 +1,3944 @@
+{
+  "evidence_class": "synthetic_Oida_D3_owner_API",
+  "source": {
+    "akousma_id": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+    "schema_version": "1.7.0",
+    "created_at": "2026-09-07T15:49:55.431Z",
+    "subject": "fixture:subject",
+    "provenance": {
+      "source_type": "unknown",
+      "origin": "unknown",
+      "originating_app": "oida",
+      "created_at": "2026-09-07T15:49:55.431Z"
+    },
+    "listening": {
+      "oida.agent-report": {
+        "contract": "akouo/agent-report/v0.1",
+        "payload": {
+          "contract": "akouo/agent-report/v0.1",
+          "report_id": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+          "listener_id": "agent:fixture",
+          "listening_pass_id": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+          "subject_ref": "fixture:subject",
+          "input_refs": [
+            "fixture:subject"
+          ],
+          "apparatus_ref": "access:2526d572-44f7-4b92-bc04-77ca622c47d8",
+          "report_format": "structured",
+          "recipients": [
+            {
+              "id": "oida:owner",
+              "type": "human"
+            }
+          ],
+          "report_of_refs": [],
+          "features": [
+            {
+              "namespace": "fixture",
+              "name": "position",
+              "category": "interpreted",
+              "value": {
+                "status": "unknown",
+                "reason": "Synthetic fixture"
+              },
+              "claim": {
+                "statement": "Synthetic retained position 0",
+                "source": "memory",
+                "confidence": "undetermined",
+                "evidence_refs": [
+                  "fixture:subject"
+                ],
+                "actionability": "none",
+                "claim_id": "claim:334f6881-a0f5-48cb-a447-e34f761df211",
+                "listening_pass_id": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983"
+              },
+              "feature_id": "feature:7d6f7660-b6a9-4c9b-8851-99f7c508a47c"
+            }
+          ],
+          "limitations": [
+            "Digital evidence, provider attribution, human access and physical calibration remain separate."
+          ]
+        }
+      },
+      "oida.report-text": {
+        "contract": "oida/report-text/v1",
+        "payload": {
+          "text": "Report report:8c11ad76-1eed-4a9f-8d26-655c3382e235\nposition: Synthetic retained position 0 [interpreted; confidence undetermined]\nDigital evidence, provider attribution, human access and physical calibration remain separate.",
+          "report_ref": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235"
+        }
+      }
+    },
+    "lineage": {
+      "parent_akousma_ids": []
+    },
+    "tags": [],
+    "annotations": {},
+    "summary": "Synthetic retained account 0",
+    "auditum": {
+      "contract": "earworm/auditum/v3",
+      "listenings": [
+        {
+          "listening_id": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+          "listener_id": "agent:fixture",
+          "listener_type": "agent",
+          "created_at": "2026-09-07T15:49:55.431Z",
+          "report_namespace": "oida.agent-report",
+          "contract": "akouo/agent-report/v0.1",
+          "listening_pass_ref": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983"
+        }
+      ],
+      "route_decisions": [
+        {
+          "decision_id": "decision:e4fdfdad-6b76-4388-9c47-fc066d474e0c",
+          "gate": "inference",
+          "outcome": "proceed",
+          "subject": "fixture:subject",
+          "reason": "Bounded local report construction; no action authority",
+          "decided_at": "2026-09-07T15:49:55.431Z",
+          "listening_id": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+          "producer_contract": "akouo/agent-report/v0.1",
+          "authority": {
+            "mode": "observe_only",
+            "actor": "agent:fixture",
+            "requires_confirmation": true,
+            "reversible": true
+          }
+        }
+      ],
+      "actions": [],
+      "disagreements": [],
+      "honest_absences": [
+        {
+          "id": "absence:79a0e0f3-8de6-4f17-8306-75d7fec0ac84",
+          "kind": "not_retained",
+          "subject": "raw audio",
+          "attributed_to": "owner retention boundary",
+          "listening_id": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+          "count": 1,
+          "note": "No raw audio asset is retained in this account"
+        }
+      ]
+    },
+    "extensions": {
+      "earworm_listening_access": {
+        "contract": "earworm/listening-access/v1",
+        "declaration_id": "access:2526d572-44f7-4b92-bc04-77ca622c47d8",
+        "subject_ref": "fixture:subject",
+        "capture": {
+          "status": "unknown",
+          "reason": "Retained records only"
+        },
+        "sampled_representation": {
+          "status": "unknown",
+          "reason": "No audio source opened"
+        },
+        "model_input": {
+          "status": "not_applicable",
+          "reason": "Textual retained-record reasoning; no audio model input"
+        },
+        "human_access": [
+          {
+            "status": "unknown",
+            "reason": "Text rendering is not human audio access"
+          }
+        ]
+      },
+      "earworm_listening_context": {
+        "contract": "earworm/listening-context/v1",
+        "contexts": [
+          {
+            "listening_ref": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+            "subject_ref": "fixture:subject",
+            "recipients": [
+              {
+                "id": "oida:owner",
+                "type": "human"
+              }
+            ],
+            "access_declaration_ref": "access:2526d572-44f7-4b92-bc04-77ca622c47d8",
+            "report": {
+              "ref": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+              "contract": "akouo/agent-report/v0.1",
+              "format": "structured",
+              "readability": {
+                "status": "known",
+                "value": "machine_readable"
+              },
+              "human_rendering": {
+                "status": "available",
+                "rendering_refs": [
+                  "rendering:9c7b11a0-1542-4e1d-be52-65b2410ae5e8"
+                ]
+              }
+            },
+            "renderings": [
+              {
+                "rendering_id": "rendering:9c7b11a0-1542-4e1d-be52-65b2410ae5e8",
+                "source_ref": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                "output_ref": "text:report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                "transformation_ref": "render:report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                "author_ref": "oida:structured-reporter",
+                "kind": "interpretation",
+                "media_type": "text/plain",
+                "access": {
+                  "status": "known",
+                  "value": "private"
+                }
+              }
+            ]
+          }
+        ],
+        "claims": [
+          {
+            "claim_ref": "claim:334f6881-a0f5-48cb-a447-e34f761df211",
+            "listening_ref": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+            "validity": {
+              "status": "unknown",
+              "reason": "No validity interval declared"
+            },
+            "retention": {
+              "status": "unknown",
+              "reason": "Owner retention policy"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "target": {
+    "akousma_id": "influence-target:fixture",
+    "schema_version": "1.7.0",
+    "created_at": "2026-09-07T15:49:55.437Z",
+    "subject": "fixture:subject",
+    "provenance": {
+      "source_type": "unknown",
+      "origin": "unknown",
+      "originating_app": "oida",
+      "created_at": "2026-09-07T15:49:55.437Z"
+    },
+    "listening": {
+      "oida.agent-report": {
+        "contract": "akouo/agent-report/v0.1",
+        "payload": {
+          "contract": "akouo/agent-report/v0.1",
+          "report_id": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+          "listener_id": "human:fixture",
+          "listening_pass_id": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+          "subject_ref": "fixture:subject",
+          "input_refs": [
+            "fixture:subject",
+            "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d"
+          ],
+          "apparatus_ref": "access:71622985-4f14-4874-bddc-71117c8d367f",
+          "report_format": "structured",
+          "recipients": [
+            {
+              "id": "oida:owner",
+              "type": "human"
+            }
+          ],
+          "report_of_refs": [
+            "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d"
+          ],
+          "features": [
+            {
+              "namespace": "fixture",
+              "name": "position",
+              "category": "interpreted",
+              "value": {
+                "status": "unknown",
+                "reason": "Synthetic fixture"
+              },
+              "claim": {
+                "statement": "Synthetic retained position 1",
+                "source": "memory",
+                "confidence": "undetermined",
+                "evidence_refs": [
+                  "fixture:subject"
+                ],
+                "actionability": "none",
+                "claim_id": "claim:2c8360e2-0ed3-47f6-a967-dc8f4fcd2f1c",
+                "listening_pass_id": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9"
+              },
+              "feature_id": "feature:d63f0dbb-f339-4ff4-a938-c07d4ebfc2e5"
+            }
+          ],
+          "limitations": [
+            "Digital evidence, provider attribution, human access and physical calibration remain separate."
+          ]
+        }
+      },
+      "oida.report-text": {
+        "contract": "oida/report-text/v1",
+        "payload": {
+          "text": "Report report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96\nposition: Synthetic retained position 1 [interpreted; confidence undetermined]\nDigital evidence, provider attribution, human access and physical calibration remain separate.",
+          "report_ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96"
+        }
+      },
+      "fixture.influence": {
+        "contract": "oida/decision-influence/v1",
+        "payload": {
+          "contract": "oida/decision-influence/v1",
+          "trace_id": "trace",
+          "source_record_ref": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+          "from_pass_ref": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+          "to_pass_ref": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+          "input_report_ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+          "before_decision_ref": "before",
+          "after_decision_ref": "after",
+          "attributed_by": "human:fixture",
+          "permission_ref": "fixture-owner"
+        }
+      }
+    },
+    "lineage": {
+      "parent_akousma_ids": []
+    },
+    "tags": [],
+    "annotations": {},
+    "summary": "Synthetic retained account 1",
+    "auditum": {
+      "contract": "earworm/auditum/v3",
+      "listenings": [
+        {
+          "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+          "listener_id": "human:fixture",
+          "listener_type": "human",
+          "created_at": "2026-09-07T15:49:55.437Z",
+          "report_namespace": "oida.agent-report",
+          "contract": "akouo/agent-report/v0.1",
+          "listening_pass_ref": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+          "route_decision_refs": [
+            "before",
+            "after"
+          ]
+        }
+      ],
+      "route_decisions": [
+        {
+          "decision_id": "before",
+          "gate": "inference",
+          "outcome": "abstain",
+          "subject": "fixture:subject",
+          "reason": "Bounded local report construction; no action authority",
+          "decided_at": "2026-09-07T15:49:56.431Z",
+          "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+          "producer_contract": "akouo/agent-report/v0.1",
+          "authority": {
+            "mode": "observe_only",
+            "actor": "human:fixture",
+            "requires_confirmation": true,
+            "reversible": true
+          }
+        },
+        {
+          "decision_id": "after",
+          "gate": "inference",
+          "outcome": "proceed",
+          "subject": "fixture:subject",
+          "reason": "Bounded local report construction; no action authority",
+          "decided_at": "2026-09-07T15:49:57.431Z",
+          "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+          "producer_contract": "akouo/agent-report/v0.1",
+          "authority": {
+            "mode": "observe_only",
+            "actor": "human:fixture",
+            "requires_confirmation": true,
+            "reversible": true
+          }
+        }
+      ],
+      "actions": [],
+      "disagreements": [],
+      "honest_absences": [
+        {
+          "id": "absence:0f8d23c3-eaa1-496f-aac1-a454ad249edf",
+          "kind": "not_retained",
+          "subject": "raw audio",
+          "attributed_to": "owner retention boundary",
+          "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+          "count": 1,
+          "note": "No raw audio asset is retained in this account"
+        }
+      ]
+    },
+    "extensions": {
+      "earworm_listening_access": {
+        "contract": "earworm/listening-access/v1",
+        "declaration_id": "access:71622985-4f14-4874-bddc-71117c8d367f",
+        "subject_ref": "fixture:subject",
+        "capture": {
+          "status": "unknown",
+          "reason": "Retained records only"
+        },
+        "sampled_representation": {
+          "status": "unknown",
+          "reason": "No audio source opened"
+        },
+        "model_input": {
+          "status": "not_applicable",
+          "reason": "Textual retained-record reasoning; no audio model input"
+        },
+        "human_access": [
+          {
+            "status": "unknown",
+            "reason": "Text rendering is not human audio access"
+          }
+        ]
+      },
+      "earworm_listening_context": {
+        "contract": "earworm/listening-context/v1",
+        "contexts": [
+          {
+            "listening_ref": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+            "subject_ref": "fixture:subject",
+            "recipients": [
+              {
+                "id": "oida:owner",
+                "type": "human"
+              }
+            ],
+            "access_declaration_ref": "access:71622985-4f14-4874-bddc-71117c8d367f",
+            "report": {
+              "ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+              "contract": "akouo/agent-report/v0.1",
+              "format": "structured",
+              "readability": {
+                "status": "known",
+                "value": "machine_readable"
+              },
+              "human_rendering": {
+                "status": "available",
+                "rendering_refs": [
+                  "rendering:f290c495-d04f-48f5-8fbc-8732d7c71199"
+                ]
+              }
+            },
+            "renderings": [
+              {
+                "rendering_id": "rendering:f290c495-d04f-48f5-8fbc-8732d7c71199",
+                "source_ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                "output_ref": "text:report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                "transformation_ref": "render:report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                "author_ref": "oida:structured-reporter",
+                "kind": "interpretation",
+                "media_type": "text/plain",
+                "access": {
+                  "status": "known",
+                  "value": "private"
+                }
+              }
+            ]
+          }
+        ],
+        "claims": [
+          {
+            "claim_ref": "claim:2c8360e2-0ed3-47f6-a967-dc8f4fcd2f1c",
+            "listening_ref": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+            "validity": {
+              "status": "unknown",
+              "reason": "No validity interval declared"
+            },
+            "retention": {
+              "status": "unknown",
+              "reason": "Owner retention policy"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "independent": {
+    "akousma_id": "ak:76ead07f-3ac7-4d58-876b-5021c29a5cf9",
+    "schema_version": "1.7.0",
+    "created_at": "2026-09-07T15:49:55.797Z",
+    "subject": "retained-ensemble:51e6b44c-3b8f-427d-a5fc-81163835cc84",
+    "provenance": {
+      "source_type": "unknown",
+      "origin": "unknown",
+      "originating_app": "oida",
+      "created_at": "2026-09-07T15:49:55.797Z"
+    },
+    "listening": {
+      "oida.agent-report": {
+        "contract": "akouo/agent-report/v0.1",
+        "payload": {
+          "contract": "akouo/agent-report/v0.1",
+          "report_id": "report:b8a3b7d6-db52-4d56-8480-87c18422eb61",
+          "listener_id": "oida:structured-reporter",
+          "listening_pass_id": "pass:29d0abfb-e509-416c-9cfa-f5cdc6460e8f",
+          "subject_ref": "retained-ensemble:51e6b44c-3b8f-427d-a5fc-81163835cc84",
+          "input_refs": [
+            "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+            "influence-target:fixture"
+          ],
+          "apparatus_ref": "access:d49d751b-325d-4871-8d37-eb6b386a57eb",
+          "report_format": "structured",
+          "recipients": [
+            {
+              "id": "oida:owner",
+              "type": "human"
+            }
+          ],
+          "report_of_refs": [
+            "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+            "influence-target:fixture"
+          ],
+          "features": [],
+          "limitations": [
+            "Digital evidence, provider attribution, human access and physical calibration remain separate.",
+            "Independent retained passes; no new model pass, consensus or influence inferred."
+          ]
+        }
+      },
+      "oida.report-text": {
+        "contract": "oida/report-text/v1",
+        "payload": {
+          "text": "Report report:b8a3b7d6-db52-4d56-8480-87c18422eb61\nDigital evidence, provider attribution, human access and physical calibration remain separate.\nIndependent retained passes; no new model pass, consensus or influence inferred.",
+          "report_ref": "report:b8a3b7d6-db52-4d56-8480-87c18422eb61"
+        }
+      },
+      "retained:ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d": {
+        "contract": "akouo/retained-listening/v0.1",
+        "payload": {
+          "record": {
+            "akousma_id": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+            "schema_version": "1.7.0",
+            "created_at": "2026-09-07T15:49:55.431Z",
+            "subject": "fixture:subject",
+            "provenance": {
+              "source_type": "unknown",
+              "origin": "unknown",
+              "originating_app": "oida",
+              "created_at": "2026-09-07T15:49:55.431Z"
+            },
+            "listening": {
+              "oida.agent-report": {
+                "contract": "akouo/agent-report/v0.1",
+                "payload": {
+                  "contract": "akouo/agent-report/v0.1",
+                  "report_id": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                  "listener_id": "agent:fixture",
+                  "listening_pass_id": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                  "subject_ref": "fixture:subject",
+                  "input_refs": [
+                    "fixture:subject"
+                  ],
+                  "apparatus_ref": "access:2526d572-44f7-4b92-bc04-77ca622c47d8",
+                  "report_format": "structured",
+                  "recipients": [
+                    {
+                      "id": "oida:owner",
+                      "type": "human"
+                    }
+                  ],
+                  "report_of_refs": [],
+                  "features": [
+                    {
+                      "namespace": "fixture",
+                      "name": "position",
+                      "category": "interpreted",
+                      "value": {
+                        "status": "unknown",
+                        "reason": "Synthetic fixture"
+                      },
+                      "claim": {
+                        "statement": "Synthetic retained position 0",
+                        "source": "memory",
+                        "confidence": "undetermined",
+                        "evidence_refs": [
+                          "fixture:subject"
+                        ],
+                        "actionability": "none",
+                        "claim_id": "claim:334f6881-a0f5-48cb-a447-e34f761df211",
+                        "listening_pass_id": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983"
+                      },
+                      "feature_id": "feature:7d6f7660-b6a9-4c9b-8851-99f7c508a47c"
+                    }
+                  ],
+                  "limitations": [
+                    "Digital evidence, provider attribution, human access and physical calibration remain separate."
+                  ]
+                }
+              },
+              "oida.report-text": {
+                "contract": "oida/report-text/v1",
+                "payload": {
+                  "text": "Report report:8c11ad76-1eed-4a9f-8d26-655c3382e235\nposition: Synthetic retained position 0 [interpreted; confidence undetermined]\nDigital evidence, provider attribution, human access and physical calibration remain separate.",
+                  "report_ref": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235"
+                }
+              }
+            },
+            "lineage": {
+              "parent_akousma_ids": []
+            },
+            "tags": [],
+            "annotations": {},
+            "summary": "Synthetic retained account 0",
+            "auditum": {
+              "contract": "earworm/auditum/v3",
+              "listenings": [
+                {
+                  "listening_id": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                  "listener_id": "agent:fixture",
+                  "listener_type": "agent",
+                  "created_at": "2026-09-07T15:49:55.431Z",
+                  "report_namespace": "oida.agent-report",
+                  "contract": "akouo/agent-report/v0.1",
+                  "listening_pass_ref": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983"
+                }
+              ],
+              "route_decisions": [
+                {
+                  "decision_id": "decision:e4fdfdad-6b76-4388-9c47-fc066d474e0c",
+                  "gate": "inference",
+                  "outcome": "proceed",
+                  "subject": "fixture:subject",
+                  "reason": "Bounded local report construction; no action authority",
+                  "decided_at": "2026-09-07T15:49:55.431Z",
+                  "listening_id": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                  "producer_contract": "akouo/agent-report/v0.1",
+                  "authority": {
+                    "mode": "observe_only",
+                    "actor": "agent:fixture",
+                    "requires_confirmation": true,
+                    "reversible": true
+                  }
+                }
+              ],
+              "actions": [],
+              "disagreements": [],
+              "honest_absences": [
+                {
+                  "id": "absence:79a0e0f3-8de6-4f17-8306-75d7fec0ac84",
+                  "kind": "not_retained",
+                  "subject": "raw audio",
+                  "attributed_to": "owner retention boundary",
+                  "listening_id": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                  "count": 1,
+                  "note": "No raw audio asset is retained in this account"
+                }
+              ]
+            },
+            "extensions": {
+              "earworm_listening_access": {
+                "contract": "earworm/listening-access/v1",
+                "declaration_id": "access:2526d572-44f7-4b92-bc04-77ca622c47d8",
+                "subject_ref": "fixture:subject",
+                "capture": {
+                  "status": "unknown",
+                  "reason": "Retained records only"
+                },
+                "sampled_representation": {
+                  "status": "unknown",
+                  "reason": "No audio source opened"
+                },
+                "model_input": {
+                  "status": "not_applicable",
+                  "reason": "Textual retained-record reasoning; no audio model input"
+                },
+                "human_access": [
+                  {
+                    "status": "unknown",
+                    "reason": "Text rendering is not human audio access"
+                  }
+                ]
+              },
+              "earworm_listening_context": {
+                "contract": "earworm/listening-context/v1",
+                "contexts": [
+                  {
+                    "listening_ref": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                    "subject_ref": "fixture:subject",
+                    "recipients": [
+                      {
+                        "id": "oida:owner",
+                        "type": "human"
+                      }
+                    ],
+                    "access_declaration_ref": "access:2526d572-44f7-4b92-bc04-77ca622c47d8",
+                    "report": {
+                      "ref": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                      "contract": "akouo/agent-report/v0.1",
+                      "format": "structured",
+                      "readability": {
+                        "status": "known",
+                        "value": "machine_readable"
+                      },
+                      "human_rendering": {
+                        "status": "available",
+                        "rendering_refs": [
+                          "rendering:9c7b11a0-1542-4e1d-be52-65b2410ae5e8"
+                        ]
+                      }
+                    },
+                    "renderings": [
+                      {
+                        "rendering_id": "rendering:9c7b11a0-1542-4e1d-be52-65b2410ae5e8",
+                        "source_ref": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                        "output_ref": "text:report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                        "transformation_ref": "render:report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                        "author_ref": "oida:structured-reporter",
+                        "kind": "interpretation",
+                        "media_type": "text/plain",
+                        "access": {
+                          "status": "known",
+                          "value": "private"
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "claims": [
+                  {
+                    "claim_ref": "claim:334f6881-a0f5-48cb-a447-e34f761df211",
+                    "listening_ref": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                    "validity": {
+                      "status": "unknown",
+                      "reason": "No validity interval declared"
+                    },
+                    "retention": {
+                      "status": "unknown",
+                      "reason": "Owner retention policy"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "retained:influence-target:fixture": {
+        "contract": "akouo/retained-listening/v0.1",
+        "payload": {
+          "record": {
+            "akousma_id": "influence-target:fixture",
+            "schema_version": "1.7.0",
+            "created_at": "2026-09-07T15:49:55.437Z",
+            "subject": "fixture:subject",
+            "provenance": {
+              "source_type": "unknown",
+              "origin": "unknown",
+              "originating_app": "oida",
+              "created_at": "2026-09-07T15:49:55.437Z"
+            },
+            "listening": {
+              "oida.agent-report": {
+                "contract": "akouo/agent-report/v0.1",
+                "payload": {
+                  "contract": "akouo/agent-report/v0.1",
+                  "report_id": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                  "listener_id": "human:fixture",
+                  "listening_pass_id": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+                  "subject_ref": "fixture:subject",
+                  "input_refs": [
+                    "fixture:subject",
+                    "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d"
+                  ],
+                  "apparatus_ref": "access:71622985-4f14-4874-bddc-71117c8d367f",
+                  "report_format": "structured",
+                  "recipients": [
+                    {
+                      "id": "oida:owner",
+                      "type": "human"
+                    }
+                  ],
+                  "report_of_refs": [
+                    "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d"
+                  ],
+                  "features": [
+                    {
+                      "namespace": "fixture",
+                      "name": "position",
+                      "category": "interpreted",
+                      "value": {
+                        "status": "unknown",
+                        "reason": "Synthetic fixture"
+                      },
+                      "claim": {
+                        "statement": "Synthetic retained position 1",
+                        "source": "memory",
+                        "confidence": "undetermined",
+                        "evidence_refs": [
+                          "fixture:subject"
+                        ],
+                        "actionability": "none",
+                        "claim_id": "claim:2c8360e2-0ed3-47f6-a967-dc8f4fcd2f1c",
+                        "listening_pass_id": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9"
+                      },
+                      "feature_id": "feature:d63f0dbb-f339-4ff4-a938-c07d4ebfc2e5"
+                    }
+                  ],
+                  "limitations": [
+                    "Digital evidence, provider attribution, human access and physical calibration remain separate."
+                  ]
+                }
+              },
+              "oida.report-text": {
+                "contract": "oida/report-text/v1",
+                "payload": {
+                  "text": "Report report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96\nposition: Synthetic retained position 1 [interpreted; confidence undetermined]\nDigital evidence, provider attribution, human access and physical calibration remain separate.",
+                  "report_ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96"
+                }
+              },
+              "fixture.influence": {
+                "contract": "oida/decision-influence/v1",
+                "payload": {
+                  "contract": "oida/decision-influence/v1",
+                  "trace_id": "trace",
+                  "source_record_ref": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+                  "from_pass_ref": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                  "to_pass_ref": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+                  "input_report_ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                  "before_decision_ref": "before",
+                  "after_decision_ref": "after",
+                  "attributed_by": "human:fixture",
+                  "permission_ref": "fixture-owner"
+                }
+              }
+            },
+            "lineage": {
+              "parent_akousma_ids": []
+            },
+            "tags": [],
+            "annotations": {},
+            "summary": "Synthetic retained account 1",
+            "auditum": {
+              "contract": "earworm/auditum/v3",
+              "listenings": [
+                {
+                  "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                  "listener_id": "human:fixture",
+                  "listener_type": "human",
+                  "created_at": "2026-09-07T15:49:55.437Z",
+                  "report_namespace": "oida.agent-report",
+                  "contract": "akouo/agent-report/v0.1",
+                  "listening_pass_ref": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+                  "route_decision_refs": [
+                    "before",
+                    "after"
+                  ]
+                }
+              ],
+              "route_decisions": [
+                {
+                  "decision_id": "before",
+                  "gate": "inference",
+                  "outcome": "abstain",
+                  "subject": "fixture:subject",
+                  "reason": "Bounded local report construction; no action authority",
+                  "decided_at": "2026-09-07T15:49:56.431Z",
+                  "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                  "producer_contract": "akouo/agent-report/v0.1",
+                  "authority": {
+                    "mode": "observe_only",
+                    "actor": "human:fixture",
+                    "requires_confirmation": true,
+                    "reversible": true
+                  }
+                },
+                {
+                  "decision_id": "after",
+                  "gate": "inference",
+                  "outcome": "proceed",
+                  "subject": "fixture:subject",
+                  "reason": "Bounded local report construction; no action authority",
+                  "decided_at": "2026-09-07T15:49:57.431Z",
+                  "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                  "producer_contract": "akouo/agent-report/v0.1",
+                  "authority": {
+                    "mode": "observe_only",
+                    "actor": "human:fixture",
+                    "requires_confirmation": true,
+                    "reversible": true
+                  }
+                }
+              ],
+              "actions": [],
+              "disagreements": [],
+              "honest_absences": [
+                {
+                  "id": "absence:0f8d23c3-eaa1-496f-aac1-a454ad249edf",
+                  "kind": "not_retained",
+                  "subject": "raw audio",
+                  "attributed_to": "owner retention boundary",
+                  "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                  "count": 1,
+                  "note": "No raw audio asset is retained in this account"
+                }
+              ]
+            },
+            "extensions": {
+              "earworm_listening_access": {
+                "contract": "earworm/listening-access/v1",
+                "declaration_id": "access:71622985-4f14-4874-bddc-71117c8d367f",
+                "subject_ref": "fixture:subject",
+                "capture": {
+                  "status": "unknown",
+                  "reason": "Retained records only"
+                },
+                "sampled_representation": {
+                  "status": "unknown",
+                  "reason": "No audio source opened"
+                },
+                "model_input": {
+                  "status": "not_applicable",
+                  "reason": "Textual retained-record reasoning; no audio model input"
+                },
+                "human_access": [
+                  {
+                    "status": "unknown",
+                    "reason": "Text rendering is not human audio access"
+                  }
+                ]
+              },
+              "earworm_listening_context": {
+                "contract": "earworm/listening-context/v1",
+                "contexts": [
+                  {
+                    "listening_ref": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                    "subject_ref": "fixture:subject",
+                    "recipients": [
+                      {
+                        "id": "oida:owner",
+                        "type": "human"
+                      }
+                    ],
+                    "access_declaration_ref": "access:71622985-4f14-4874-bddc-71117c8d367f",
+                    "report": {
+                      "ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                      "contract": "akouo/agent-report/v0.1",
+                      "format": "structured",
+                      "readability": {
+                        "status": "known",
+                        "value": "machine_readable"
+                      },
+                      "human_rendering": {
+                        "status": "available",
+                        "rendering_refs": [
+                          "rendering:f290c495-d04f-48f5-8fbc-8732d7c71199"
+                        ]
+                      }
+                    },
+                    "renderings": [
+                      {
+                        "rendering_id": "rendering:f290c495-d04f-48f5-8fbc-8732d7c71199",
+                        "source_ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                        "output_ref": "text:report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                        "transformation_ref": "render:report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                        "author_ref": "oida:structured-reporter",
+                        "kind": "interpretation",
+                        "media_type": "text/plain",
+                        "access": {
+                          "status": "known",
+                          "value": "private"
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "claims": [
+                  {
+                    "claim_ref": "claim:2c8360e2-0ed3-47f6-a967-dc8f4fcd2f1c",
+                    "listening_ref": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                    "validity": {
+                      "status": "unknown",
+                      "reason": "No validity interval declared"
+                    },
+                    "retention": {
+                      "status": "unknown",
+                      "reason": "Owner retention policy"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "akouo.retained-ensemble": {
+        "contract": "akouo/retained-ensemble/v0.1",
+        "payload": {
+          "contract": "akouo/retained-ensemble/v0.1",
+          "adapted": {
+            "listenings": [
+              {
+                "listening_id": "aggregate:pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                "listener_id": "agent:fixture",
+                "listener_type": "agent",
+                "created_at": "2026-09-07T15:49:55.431Z",
+                "report_namespace": "retained:ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+                "contract": "akouo/retained-listening/v0.1",
+                "route": [
+                  "memory-lineage-listening"
+                ],
+                "listening_pass_ref": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                "route_decision_refs": [],
+                "influenced_by": []
+              },
+              {
+                "listening_id": "aggregate:pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+                "listener_id": "human:fixture",
+                "listener_type": "human",
+                "created_at": "2026-09-07T15:49:55.437Z",
+                "report_namespace": "retained:influence-target:fixture",
+                "contract": "akouo/retained-listening/v0.1",
+                "route": [
+                  "memory-lineage-listening"
+                ],
+                "listening_pass_ref": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+                "route_decision_refs": [],
+                "influenced_by": []
+              }
+            ],
+            "ensemble": {
+              "id": "ensemble:1883bcd4-23d7-4e87-893d-c0a3c546779e",
+              "kind": "plural_listening",
+              "listening_ids": [
+                "aggregate:pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                "aggregate:pass:3fbc6a53-fd6d-462b-953f-7f68326006e9"
+              ],
+              "influence_edges": [],
+              "permissions_preserved": true,
+              "disagreements_preserved": true,
+              "dissolution_rule": "Stop after these retained inputs; no new listening or inferred influence"
+            },
+            "pass_to_listening": {
+              "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983": "aggregate:pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+              "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9": "aggregate:pass:3fbc6a53-fd6d-462b-953f-7f68326006e9"
+            },
+            "source": {
+              "passes": [
+                {
+                  "id": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                  "listener_id": "agent:fixture",
+                  "route": [
+                    "memory-lineage-listening"
+                  ],
+                  "started_at": "2026-09-07T15:49:55.431Z",
+                  "moment": {
+                    "relation": "archive",
+                    "scales": [
+                      "archive"
+                    ]
+                  },
+                  "source_refs": [
+                    "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d"
+                  ],
+                  "claim_refs": [],
+                  "decision_refs": [],
+                  "influenced_by": []
+                },
+                {
+                  "id": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+                  "listener_id": "human:fixture",
+                  "route": [
+                    "memory-lineage-listening"
+                  ],
+                  "started_at": "2026-09-07T15:49:55.437Z",
+                  "moment": {
+                    "relation": "archive",
+                    "scales": [
+                      "archive"
+                    ]
+                  },
+                  "source_refs": [
+                    "influence-target:fixture"
+                  ],
+                  "claim_refs": [],
+                  "decision_refs": [],
+                  "influenced_by": []
+                }
+              ],
+              "participants": [
+                {
+                  "id": "agent:fixture",
+                  "type": "agent"
+                },
+                {
+                  "id": "human:fixture",
+                  "type": "human"
+                }
+              ],
+              "ensemble": {
+                "id": "ensemble:1883bcd4-23d7-4e87-893d-c0a3c546779e",
+                "kind": "plural_listening",
+                "participant_ids": [
+                  "agent:fixture",
+                  "human:fixture"
+                ],
+                "listening_pass_ids": [
+                  "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                  "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9"
+                ],
+                "influence_edges": [],
+                "permissions_preserved": true,
+                "disagreements_preserved": true,
+                "dissolution_rule": "Stop after these retained inputs; no new listening or inferred influence"
+              }
+            }
+          },
+          "source_snapshots": {
+            "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d": {
+              "akousma_id": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+              "schema_version": "1.7.0",
+              "created_at": "2026-09-07T15:49:55.431Z",
+              "subject": "fixture:subject",
+              "provenance": {
+                "source_type": "unknown",
+                "origin": "unknown",
+                "originating_app": "oida",
+                "created_at": "2026-09-07T15:49:55.431Z"
+              },
+              "listening": {
+                "oida.agent-report": {
+                  "contract": "akouo/agent-report/v0.1",
+                  "payload": {
+                    "contract": "akouo/agent-report/v0.1",
+                    "report_id": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                    "listener_id": "agent:fixture",
+                    "listening_pass_id": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                    "subject_ref": "fixture:subject",
+                    "input_refs": [
+                      "fixture:subject"
+                    ],
+                    "apparatus_ref": "access:2526d572-44f7-4b92-bc04-77ca622c47d8",
+                    "report_format": "structured",
+                    "recipients": [
+                      {
+                        "id": "oida:owner",
+                        "type": "human"
+                      }
+                    ],
+                    "report_of_refs": [],
+                    "features": [
+                      {
+                        "namespace": "fixture",
+                        "name": "position",
+                        "category": "interpreted",
+                        "value": {
+                          "status": "unknown",
+                          "reason": "Synthetic fixture"
+                        },
+                        "claim": {
+                          "statement": "Synthetic retained position 0",
+                          "source": "memory",
+                          "confidence": "undetermined",
+                          "evidence_refs": [
+                            "fixture:subject"
+                          ],
+                          "actionability": "none",
+                          "claim_id": "claim:334f6881-a0f5-48cb-a447-e34f761df211",
+                          "listening_pass_id": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983"
+                        },
+                        "feature_id": "feature:7d6f7660-b6a9-4c9b-8851-99f7c508a47c"
+                      }
+                    ],
+                    "limitations": [
+                      "Digital evidence, provider attribution, human access and physical calibration remain separate."
+                    ]
+                  }
+                },
+                "oida.report-text": {
+                  "contract": "oida/report-text/v1",
+                  "payload": {
+                    "text": "Report report:8c11ad76-1eed-4a9f-8d26-655c3382e235\nposition: Synthetic retained position 0 [interpreted; confidence undetermined]\nDigital evidence, provider attribution, human access and physical calibration remain separate.",
+                    "report_ref": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235"
+                  }
+                }
+              },
+              "lineage": {
+                "parent_akousma_ids": []
+              },
+              "tags": [],
+              "annotations": {},
+              "summary": "Synthetic retained account 0",
+              "auditum": {
+                "contract": "earworm/auditum/v3",
+                "listenings": [
+                  {
+                    "listening_id": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                    "listener_id": "agent:fixture",
+                    "listener_type": "agent",
+                    "created_at": "2026-09-07T15:49:55.431Z",
+                    "report_namespace": "oida.agent-report",
+                    "contract": "akouo/agent-report/v0.1",
+                    "listening_pass_ref": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983"
+                  }
+                ],
+                "route_decisions": [
+                  {
+                    "decision_id": "decision:e4fdfdad-6b76-4388-9c47-fc066d474e0c",
+                    "gate": "inference",
+                    "outcome": "proceed",
+                    "subject": "fixture:subject",
+                    "reason": "Bounded local report construction; no action authority",
+                    "decided_at": "2026-09-07T15:49:55.431Z",
+                    "listening_id": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                    "producer_contract": "akouo/agent-report/v0.1",
+                    "authority": {
+                      "mode": "observe_only",
+                      "actor": "agent:fixture",
+                      "requires_confirmation": true,
+                      "reversible": true
+                    }
+                  }
+                ],
+                "actions": [],
+                "disagreements": [],
+                "honest_absences": [
+                  {
+                    "id": "absence:79a0e0f3-8de6-4f17-8306-75d7fec0ac84",
+                    "kind": "not_retained",
+                    "subject": "raw audio",
+                    "attributed_to": "owner retention boundary",
+                    "listening_id": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                    "count": 1,
+                    "note": "No raw audio asset is retained in this account"
+                  }
+                ]
+              },
+              "extensions": {
+                "earworm_listening_access": {
+                  "contract": "earworm/listening-access/v1",
+                  "declaration_id": "access:2526d572-44f7-4b92-bc04-77ca622c47d8",
+                  "subject_ref": "fixture:subject",
+                  "capture": {
+                    "status": "unknown",
+                    "reason": "Retained records only"
+                  },
+                  "sampled_representation": {
+                    "status": "unknown",
+                    "reason": "No audio source opened"
+                  },
+                  "model_input": {
+                    "status": "not_applicable",
+                    "reason": "Textual retained-record reasoning; no audio model input"
+                  },
+                  "human_access": [
+                    {
+                      "status": "unknown",
+                      "reason": "Text rendering is not human audio access"
+                    }
+                  ]
+                },
+                "earworm_listening_context": {
+                  "contract": "earworm/listening-context/v1",
+                  "contexts": [
+                    {
+                      "listening_ref": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                      "subject_ref": "fixture:subject",
+                      "recipients": [
+                        {
+                          "id": "oida:owner",
+                          "type": "human"
+                        }
+                      ],
+                      "access_declaration_ref": "access:2526d572-44f7-4b92-bc04-77ca622c47d8",
+                      "report": {
+                        "ref": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                        "contract": "akouo/agent-report/v0.1",
+                        "format": "structured",
+                        "readability": {
+                          "status": "known",
+                          "value": "machine_readable"
+                        },
+                        "human_rendering": {
+                          "status": "available",
+                          "rendering_refs": [
+                            "rendering:9c7b11a0-1542-4e1d-be52-65b2410ae5e8"
+                          ]
+                        }
+                      },
+                      "renderings": [
+                        {
+                          "rendering_id": "rendering:9c7b11a0-1542-4e1d-be52-65b2410ae5e8",
+                          "source_ref": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                          "output_ref": "text:report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                          "transformation_ref": "render:report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                          "author_ref": "oida:structured-reporter",
+                          "kind": "interpretation",
+                          "media_type": "text/plain",
+                          "access": {
+                            "status": "known",
+                            "value": "private"
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "claims": [
+                    {
+                      "claim_ref": "claim:334f6881-a0f5-48cb-a447-e34f761df211",
+                      "listening_ref": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                      "validity": {
+                        "status": "unknown",
+                        "reason": "No validity interval declared"
+                      },
+                      "retention": {
+                        "status": "unknown",
+                        "reason": "Owner retention policy"
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "influence-target:fixture": {
+              "akousma_id": "influence-target:fixture",
+              "schema_version": "1.7.0",
+              "created_at": "2026-09-07T15:49:55.437Z",
+              "subject": "fixture:subject",
+              "provenance": {
+                "source_type": "unknown",
+                "origin": "unknown",
+                "originating_app": "oida",
+                "created_at": "2026-09-07T15:49:55.437Z"
+              },
+              "listening": {
+                "oida.agent-report": {
+                  "contract": "akouo/agent-report/v0.1",
+                  "payload": {
+                    "contract": "akouo/agent-report/v0.1",
+                    "report_id": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                    "listener_id": "human:fixture",
+                    "listening_pass_id": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+                    "subject_ref": "fixture:subject",
+                    "input_refs": [
+                      "fixture:subject",
+                      "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d"
+                    ],
+                    "apparatus_ref": "access:71622985-4f14-4874-bddc-71117c8d367f",
+                    "report_format": "structured",
+                    "recipients": [
+                      {
+                        "id": "oida:owner",
+                        "type": "human"
+                      }
+                    ],
+                    "report_of_refs": [
+                      "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d"
+                    ],
+                    "features": [
+                      {
+                        "namespace": "fixture",
+                        "name": "position",
+                        "category": "interpreted",
+                        "value": {
+                          "status": "unknown",
+                          "reason": "Synthetic fixture"
+                        },
+                        "claim": {
+                          "statement": "Synthetic retained position 1",
+                          "source": "memory",
+                          "confidence": "undetermined",
+                          "evidence_refs": [
+                            "fixture:subject"
+                          ],
+                          "actionability": "none",
+                          "claim_id": "claim:2c8360e2-0ed3-47f6-a967-dc8f4fcd2f1c",
+                          "listening_pass_id": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9"
+                        },
+                        "feature_id": "feature:d63f0dbb-f339-4ff4-a938-c07d4ebfc2e5"
+                      }
+                    ],
+                    "limitations": [
+                      "Digital evidence, provider attribution, human access and physical calibration remain separate."
+                    ]
+                  }
+                },
+                "oida.report-text": {
+                  "contract": "oida/report-text/v1",
+                  "payload": {
+                    "text": "Report report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96\nposition: Synthetic retained position 1 [interpreted; confidence undetermined]\nDigital evidence, provider attribution, human access and physical calibration remain separate.",
+                    "report_ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96"
+                  }
+                },
+                "fixture.influence": {
+                  "contract": "oida/decision-influence/v1",
+                  "payload": {
+                    "contract": "oida/decision-influence/v1",
+                    "trace_id": "trace",
+                    "source_record_ref": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+                    "from_pass_ref": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                    "to_pass_ref": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+                    "input_report_ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                    "before_decision_ref": "before",
+                    "after_decision_ref": "after",
+                    "attributed_by": "human:fixture",
+                    "permission_ref": "fixture-owner"
+                  }
+                }
+              },
+              "lineage": {
+                "parent_akousma_ids": []
+              },
+              "tags": [],
+              "annotations": {},
+              "summary": "Synthetic retained account 1",
+              "auditum": {
+                "contract": "earworm/auditum/v3",
+                "listenings": [
+                  {
+                    "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                    "listener_id": "human:fixture",
+                    "listener_type": "human",
+                    "created_at": "2026-09-07T15:49:55.437Z",
+                    "report_namespace": "oida.agent-report",
+                    "contract": "akouo/agent-report/v0.1",
+                    "listening_pass_ref": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+                    "route_decision_refs": [
+                      "before",
+                      "after"
+                    ]
+                  }
+                ],
+                "route_decisions": [
+                  {
+                    "decision_id": "before",
+                    "gate": "inference",
+                    "outcome": "abstain",
+                    "subject": "fixture:subject",
+                    "reason": "Bounded local report construction; no action authority",
+                    "decided_at": "2026-09-07T15:49:56.431Z",
+                    "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                    "producer_contract": "akouo/agent-report/v0.1",
+                    "authority": {
+                      "mode": "observe_only",
+                      "actor": "human:fixture",
+                      "requires_confirmation": true,
+                      "reversible": true
+                    }
+                  },
+                  {
+                    "decision_id": "after",
+                    "gate": "inference",
+                    "outcome": "proceed",
+                    "subject": "fixture:subject",
+                    "reason": "Bounded local report construction; no action authority",
+                    "decided_at": "2026-09-07T15:49:57.431Z",
+                    "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                    "producer_contract": "akouo/agent-report/v0.1",
+                    "authority": {
+                      "mode": "observe_only",
+                      "actor": "human:fixture",
+                      "requires_confirmation": true,
+                      "reversible": true
+                    }
+                  }
+                ],
+                "actions": [],
+                "disagreements": [],
+                "honest_absences": [
+                  {
+                    "id": "absence:0f8d23c3-eaa1-496f-aac1-a454ad249edf",
+                    "kind": "not_retained",
+                    "subject": "raw audio",
+                    "attributed_to": "owner retention boundary",
+                    "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                    "count": 1,
+                    "note": "No raw audio asset is retained in this account"
+                  }
+                ]
+              },
+              "extensions": {
+                "earworm_listening_access": {
+                  "contract": "earworm/listening-access/v1",
+                  "declaration_id": "access:71622985-4f14-4874-bddc-71117c8d367f",
+                  "subject_ref": "fixture:subject",
+                  "capture": {
+                    "status": "unknown",
+                    "reason": "Retained records only"
+                  },
+                  "sampled_representation": {
+                    "status": "unknown",
+                    "reason": "No audio source opened"
+                  },
+                  "model_input": {
+                    "status": "not_applicable",
+                    "reason": "Textual retained-record reasoning; no audio model input"
+                  },
+                  "human_access": [
+                    {
+                      "status": "unknown",
+                      "reason": "Text rendering is not human audio access"
+                    }
+                  ]
+                },
+                "earworm_listening_context": {
+                  "contract": "earworm/listening-context/v1",
+                  "contexts": [
+                    {
+                      "listening_ref": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                      "subject_ref": "fixture:subject",
+                      "recipients": [
+                        {
+                          "id": "oida:owner",
+                          "type": "human"
+                        }
+                      ],
+                      "access_declaration_ref": "access:71622985-4f14-4874-bddc-71117c8d367f",
+                      "report": {
+                        "ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                        "contract": "akouo/agent-report/v0.1",
+                        "format": "structured",
+                        "readability": {
+                          "status": "known",
+                          "value": "machine_readable"
+                        },
+                        "human_rendering": {
+                          "status": "available",
+                          "rendering_refs": [
+                            "rendering:f290c495-d04f-48f5-8fbc-8732d7c71199"
+                          ]
+                        }
+                      },
+                      "renderings": [
+                        {
+                          "rendering_id": "rendering:f290c495-d04f-48f5-8fbc-8732d7c71199",
+                          "source_ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                          "output_ref": "text:report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                          "transformation_ref": "render:report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                          "author_ref": "oida:structured-reporter",
+                          "kind": "interpretation",
+                          "media_type": "text/plain",
+                          "access": {
+                            "status": "known",
+                            "value": "private"
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "claims": [
+                    {
+                      "claim_ref": "claim:2c8360e2-0ed3-47f6-a967-dc8f4fcd2f1c",
+                      "listening_ref": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                      "validity": {
+                        "status": "unknown",
+                        "reason": "No validity interval declared"
+                      },
+                      "retention": {
+                        "status": "unknown",
+                        "reason": "Owner retention policy"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "disagreements": []
+        }
+      },
+      "oida.ensemble-execution": {
+        "contract": "oida/ensemble-execution/v1",
+        "payload": {
+          "plan": {
+            "contract": "akouo/orchestration-plan/v0.1",
+            "nodes": [
+              {
+                "id": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+                "depends_on": [],
+                "permission": "granted"
+              },
+              {
+                "id": "influence-target:fixture",
+                "depends_on": [],
+                "permission": "granted"
+              }
+            ],
+            "order": [
+              "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+              "influence-target:fixture"
+            ],
+            "dissolution_rule": "Stop after the selected retained inputs",
+            "execution": "not_requested"
+          },
+          "receipts": [
+            {
+              "pass_id": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+              "status": "complete",
+              "dependency_refs": []
+            },
+            {
+              "pass_id": "influence-target:fixture",
+              "status": "complete",
+              "dependency_refs": []
+            }
+          ],
+          "permission_refs": {
+            "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d": "fixture-owner",
+            "influence-target:fixture": "fixture-owner"
+          },
+          "terminated": true
+        }
+      }
+    },
+    "lineage": {
+      "parent_akousma_ids": [
+        "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+        "influence-target:fixture"
+      ]
+    },
+    "tags": [],
+    "annotations": {},
+    "summary": "Independent retained listening ensemble",
+    "auditum": {
+      "contract": "earworm/auditum/v3",
+      "listenings": [
+        {
+          "listening_id": "listening:b660d4b0-a69b-4dd2-b97b-3484ff153db9",
+          "listener_id": "oida:structured-reporter",
+          "listener_type": "agent",
+          "created_at": "2026-09-07T15:49:55.797Z",
+          "report_namespace": "oida.agent-report",
+          "contract": "akouo/agent-report/v0.1",
+          "listening_pass_ref": "pass:29d0abfb-e509-416c-9cfa-f5cdc6460e8f"
+        },
+        {
+          "listening_id": "aggregate:pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+          "listener_id": "agent:fixture",
+          "listener_type": "agent",
+          "created_at": "2026-09-07T15:49:55.431Z",
+          "report_namespace": "retained:ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+          "contract": "akouo/retained-listening/v0.1",
+          "route": [
+            "memory-lineage-listening"
+          ],
+          "listening_pass_ref": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+          "route_decision_refs": [],
+          "influenced_by": []
+        },
+        {
+          "listening_id": "aggregate:pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+          "listener_id": "human:fixture",
+          "listener_type": "human",
+          "created_at": "2026-09-07T15:49:55.437Z",
+          "report_namespace": "retained:influence-target:fixture",
+          "contract": "akouo/retained-listening/v0.1",
+          "route": [
+            "memory-lineage-listening"
+          ],
+          "listening_pass_ref": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+          "route_decision_refs": [],
+          "influenced_by": []
+        }
+      ],
+      "route_decisions": [
+        {
+          "decision_id": "decision:e59e3ea1-6c6e-4b03-b26b-13dbf8f3472a",
+          "gate": "inference",
+          "outcome": "proceed",
+          "subject": "retained-ensemble:51e6b44c-3b8f-427d-a5fc-81163835cc84",
+          "reason": "Bounded local report construction; no action authority",
+          "decided_at": "2026-09-07T15:49:55.797Z",
+          "listening_id": "listening:b660d4b0-a69b-4dd2-b97b-3484ff153db9",
+          "producer_contract": "akouo/agent-report/v0.1",
+          "authority": {
+            "mode": "observe_only",
+            "actor": "oida:structured-reporter",
+            "requires_confirmation": true,
+            "reversible": true
+          }
+        }
+      ],
+      "actions": [],
+      "disagreements": [],
+      "honest_absences": [
+        {
+          "id": "absence:33cd53ca-31fd-43d4-a019-cde34eff497c",
+          "kind": "not_retained",
+          "subject": "raw audio",
+          "attributed_to": "owner retention boundary",
+          "listening_id": "listening:b660d4b0-a69b-4dd2-b97b-3484ff153db9",
+          "count": 1,
+          "note": "No raw audio asset is retained in this account"
+        }
+      ],
+      "ensemble": {
+        "id": "ensemble:1883bcd4-23d7-4e87-893d-c0a3c546779e",
+        "kind": "plural_listening",
+        "listening_ids": [
+          "aggregate:pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+          "aggregate:pass:3fbc6a53-fd6d-462b-953f-7f68326006e9"
+        ],
+        "influence_edges": [],
+        "permissions_preserved": true,
+        "disagreements_preserved": true,
+        "dissolution_rule": "Stop after these retained inputs; no new listening or inferred influence"
+      }
+    },
+    "extensions": {
+      "earworm_listening_access": {
+        "contract": "earworm/listening-access/v1",
+        "declaration_id": "access:d49d751b-325d-4871-8d37-eb6b386a57eb",
+        "subject_ref": "retained-ensemble:51e6b44c-3b8f-427d-a5fc-81163835cc84",
+        "capture": {
+          "status": "unknown",
+          "reason": "Retained records only"
+        },
+        "sampled_representation": {
+          "status": "unknown",
+          "reason": "No audio source opened"
+        },
+        "model_input": {
+          "status": "not_applicable",
+          "reason": "Textual retained-record reasoning; no audio model input"
+        },
+        "human_access": [
+          {
+            "status": "unknown",
+            "reason": "Text rendering is not human audio access"
+          }
+        ]
+      },
+      "earworm_listening_context": {
+        "contract": "earworm/listening-context/v1",
+        "contexts": [
+          {
+            "listening_ref": "listening:b660d4b0-a69b-4dd2-b97b-3484ff153db9",
+            "subject_ref": "retained-ensemble:51e6b44c-3b8f-427d-a5fc-81163835cc84",
+            "recipients": [
+              {
+                "id": "oida:owner",
+                "type": "human"
+              }
+            ],
+            "access_declaration_ref": "access:d49d751b-325d-4871-8d37-eb6b386a57eb",
+            "report": {
+              "ref": "report:b8a3b7d6-db52-4d56-8480-87c18422eb61",
+              "contract": "akouo/agent-report/v0.1",
+              "format": "structured",
+              "readability": {
+                "status": "known",
+                "value": "machine_readable"
+              },
+              "human_rendering": {
+                "status": "available",
+                "rendering_refs": [
+                  "rendering:65b2cb54-b1d8-4295-ab7e-93f477ce557f"
+                ]
+              }
+            },
+            "renderings": [
+              {
+                "rendering_id": "rendering:65b2cb54-b1d8-4295-ab7e-93f477ce557f",
+                "source_ref": "report:b8a3b7d6-db52-4d56-8480-87c18422eb61",
+                "output_ref": "text:report:b8a3b7d6-db52-4d56-8480-87c18422eb61",
+                "transformation_ref": "render:report:b8a3b7d6-db52-4d56-8480-87c18422eb61",
+                "author_ref": "oida:structured-reporter",
+                "kind": "interpretation",
+                "media_type": "text/plain",
+                "access": {
+                  "status": "known",
+                  "value": "private"
+                }
+              }
+            ]
+          },
+          {
+            "listening_ref": "aggregate:pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+            "subject_ref": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+            "recipients": [
+              {
+                "id": "oida:owner",
+                "type": "human"
+              }
+            ],
+            "access_declaration_ref": "access:e9a3146a-930a-4904-a82c-79101d470b7f",
+            "report": {
+              "ref": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+              "contract": "akouo/retained-listening/v0.1",
+              "format": "structured",
+              "readability": {
+                "status": "known",
+                "value": "machine_readable"
+              },
+              "human_rendering": {
+                "status": "none",
+                "reason": "Original rendering declarations remain in the source snapshot."
+              }
+            },
+            "renderings": []
+          },
+          {
+            "listening_ref": "aggregate:pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+            "subject_ref": "influence-target:fixture",
+            "recipients": [
+              {
+                "id": "oida:owner",
+                "type": "human"
+              }
+            ],
+            "access_declaration_ref": "access:a9de9cc4-db54-4f36-b2a6-a8a11519b0b7",
+            "report": {
+              "ref": "influence-target:fixture",
+              "contract": "akouo/retained-listening/v0.1",
+              "format": "structured",
+              "readability": {
+                "status": "known",
+                "value": "machine_readable"
+              },
+              "human_rendering": {
+                "status": "none",
+                "reason": "Original rendering declarations remain in the source snapshot."
+              }
+            },
+            "renderings": []
+          }
+        ],
+        "claims": [],
+        "access_declarations": [
+          {
+            "contract": "earworm/listening-access/v1",
+            "declaration_id": "access:e9a3146a-930a-4904-a82c-79101d470b7f",
+            "subject_ref": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+            "capture": {
+              "status": "unknown",
+              "reason": "Retained records only"
+            },
+            "sampled_representation": {
+              "status": "unknown",
+              "reason": "No audio source opened"
+            },
+            "model_input": {
+              "status": "not_applicable",
+              "reason": "Textual retained-record reasoning; no audio model input"
+            },
+            "human_access": [
+              {
+                "status": "unknown",
+                "reason": "Text rendering is not human audio access"
+              }
+            ]
+          },
+          {
+            "contract": "earworm/listening-access/v1",
+            "declaration_id": "access:a9de9cc4-db54-4f36-b2a6-a8a11519b0b7",
+            "subject_ref": "influence-target:fixture",
+            "capture": {
+              "status": "unknown",
+              "reason": "Retained records only"
+            },
+            "sampled_representation": {
+              "status": "unknown",
+              "reason": "No audio source opened"
+            },
+            "model_input": {
+              "status": "not_applicable",
+              "reason": "Textual retained-record reasoning; no audio model input"
+            },
+            "human_access": [
+              {
+                "status": "unknown",
+                "reason": "Text rendering is not human audio access"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "second_report": {
+    "akousma_id": "ak:92047ed6-fec6-4fb7-bbe5-87eca60964e7",
+    "schema_version": "1.7.0",
+    "created_at": "2026-09-07T15:49:55.827Z",
+    "subject": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+    "provenance": {
+      "source_type": "unknown",
+      "origin": "unknown",
+      "originating_app": "oida",
+      "created_at": "2026-09-07T15:49:55.827Z"
+    },
+    "listening": {
+      "oida.agent-report": {
+        "contract": "akouo/agent-report/v0.1",
+        "payload": {
+          "contract": "akouo/agent-report/v0.1",
+          "report_id": "report:ff5a7704-4a96-46f7-8b8a-996ce2fb2f0c",
+          "listener_id": "oida:structured-reporter",
+          "listening_pass_id": "pass:82ceb3ae-d096-4f8c-af49-cb9c9a619463",
+          "subject_ref": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+          "input_refs": [
+            "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d"
+          ],
+          "apparatus_ref": "access:2a034eb2-6355-4e0f-be1d-f7b5c5995d20",
+          "report_format": "structured",
+          "recipients": [
+            {
+              "id": "oida:owner",
+              "type": "human"
+            }
+          ],
+          "report_of_refs": [
+            "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d"
+          ],
+          "features": [
+            {
+              "feature_id": "feature:8738eb61-8de5-422e-9998-d30b20c15e77",
+              "namespace": "oida.second_report",
+              "name": "retained_account_interpretation",
+              "category": "interpreted",
+              "value": {
+                "status": "unknown",
+                "reason": "Textual second-report interpretation"
+              },
+              "claim": {
+                "claim_id": "claim:9a5b035f-8bbe-44a2-a9f4-4a312095790f",
+                "statement": "No explicit uncertainty notes were included in this packet.",
+                "confidence": "undetermined",
+                "source": "memory",
+                "evidence_refs": [
+                  "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d"
+                ],
+                "listening_pass_id": "pass:82ceb3ae-d096-4f8c-af49-cb9c9a619463",
+                "actionability": "none"
+              }
+            },
+            {
+              "feature_id": "feature:3f570ab1-7863-4621-91e4-627848d0b596",
+              "namespace": "oida.second_report",
+              "name": "access_limit",
+              "category": "undetermined",
+              "value": {
+                "status": "unknown",
+                "reason": "No original audio examined"
+              },
+              "claim": {
+                "claim_id": "claim:a8d04883-9d81-4b08-84eb-680e802cde9e",
+                "statement": "This pass interprets retained evidence; it does not verify original claims or establish hearing.",
+                "confidence": "undetermined",
+                "source": "memory",
+                "evidence_refs": [
+                  "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d"
+                ],
+                "listening_pass_id": "pass:82ceb3ae-d096-4f8c-af49-cb9c9a619463",
+                "actionability": "none"
+              }
+            }
+          ],
+          "limitations": [
+            "Digital evidence, provider attribution, human access and physical calibration remain separate."
+          ]
+        }
+      },
+      "oida.report-text": {
+        "contract": "oida/report-text/v1",
+        "payload": {
+          "text": "Report report:ff5a7704-4a96-46f7-8b8a-996ce2fb2f0c\nretained_account_interpretation: No explicit uncertainty notes were included in this packet. [interpreted; confidence undetermined]\naccess_limit: This pass interprets retained evidence; it does not verify original claims or establish hearing. [undetermined; confidence undetermined]\nDigital evidence, provider attribution, human access and physical calibration remain separate.",
+          "report_ref": "report:ff5a7704-4a96-46f7-8b8a-996ce2fb2f0c"
+        }
+      },
+      "akouo.second-report": {
+        "contract": "akouo/companions/v0.1",
+        "payload": {
+          "contract": "akouo/companions/v0.1",
+          "kind": "second_report",
+          "route": {
+            "contract": "akouo/agent-route/v0.1",
+            "request": {
+              "contract": "akouo/agent-route/v0.1",
+              "request_id": "route:216dca82-260f-44cc-807f-936e910e3f53",
+              "profile": "second_report",
+              "supported_contracts": [
+                "akouo/companions/v0.1",
+                "akouo/agent-route/v0.1",
+                "akouo/agent-report/v0.1",
+                "earworm/listening-access/v1"
+              ],
+              "relation": {
+                "of": "record",
+                "ref": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d"
+              },
+              "resolved_refs": [
+                "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+                "access:2a034eb2-6355-4e0f-be1d-f7b5c5995d20",
+                "oida:structured-reporter",
+                "oida:owner"
+              ],
+              "requested_categories": [
+                "interpreted",
+                "undetermined"
+              ],
+              "report_id": "report:ff5a7704-4a96-46f7-8b8a-996ce2fb2f0c",
+              "listener_id": "oida:structured-reporter",
+              "listening_pass_id": "pass:82ceb3ae-d096-4f8c-af49-cb9c9a619463",
+              "input_refs": [
+                "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d"
+              ],
+              "report_of_refs": [
+                "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d"
+              ],
+              "apparatus_ref": "access:2a034eb2-6355-4e0f-be1d-f7b5c5995d20",
+              "recipients": [
+                {
+                  "id": "oida:owner",
+                  "type": "human"
+                }
+              ]
+            },
+            "mode_chain": [
+              "memory-lineage-listening",
+              "forensic-archival-listening"
+            ],
+            "claim_permissions": {
+              "heard_allowed": false,
+              "measured_allowed": false,
+              "inferred_allowed": true,
+              "interpreted_allowed": true,
+              "speculative_allowed": false,
+              "must_include_undetermined": true
+            },
+            "decision": {
+              "id": "route:216dca82-260f-44cc-807f-936e910e3f53:route",
+              "gate": "inference",
+              "outcome": "proceed",
+              "subject": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+              "reason": "Declared inputs support this bounded report route; no result or action has been executed.",
+              "decided_at": "2026-09-07T15:49:55.818Z",
+              "authority": {
+                "mode": "observe_only",
+                "actor": "oida:structured-reporter",
+                "requires_confirmation": true,
+                "reversible": true
+              }
+            },
+            "spectral_assessment": null,
+            "execution": "not_requested"
+          },
+          "source_snapshots": {
+            "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d": {
+              "akousma_id": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+              "schema_version": "1.7.0",
+              "created_at": "2026-09-07T15:49:55.431Z",
+              "subject": "fixture:subject",
+              "provenance": {
+                "source_type": "unknown",
+                "origin": "unknown",
+                "originating_app": "oida",
+                "created_at": "2026-09-07T15:49:55.431Z"
+              },
+              "listening": {
+                "oida.agent-report": {
+                  "contract": "akouo/agent-report/v0.1",
+                  "payload": {
+                    "contract": "akouo/agent-report/v0.1",
+                    "report_id": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                    "listener_id": "agent:fixture",
+                    "listening_pass_id": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                    "subject_ref": "fixture:subject",
+                    "input_refs": [
+                      "fixture:subject"
+                    ],
+                    "apparatus_ref": "access:2526d572-44f7-4b92-bc04-77ca622c47d8",
+                    "report_format": "structured",
+                    "recipients": [
+                      {
+                        "id": "oida:owner",
+                        "type": "human"
+                      }
+                    ],
+                    "report_of_refs": [],
+                    "features": [
+                      {
+                        "namespace": "fixture",
+                        "name": "position",
+                        "category": "interpreted",
+                        "value": {
+                          "status": "unknown",
+                          "reason": "Synthetic fixture"
+                        },
+                        "claim": {
+                          "statement": "Synthetic retained position 0",
+                          "source": "memory",
+                          "confidence": "undetermined",
+                          "evidence_refs": [
+                            "fixture:subject"
+                          ],
+                          "actionability": "none",
+                          "claim_id": "claim:334f6881-a0f5-48cb-a447-e34f761df211",
+                          "listening_pass_id": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983"
+                        },
+                        "feature_id": "feature:7d6f7660-b6a9-4c9b-8851-99f7c508a47c"
+                      }
+                    ],
+                    "limitations": [
+                      "Digital evidence, provider attribution, human access and physical calibration remain separate."
+                    ]
+                  }
+                },
+                "oida.report-text": {
+                  "contract": "oida/report-text/v1",
+                  "payload": {
+                    "text": "Report report:8c11ad76-1eed-4a9f-8d26-655c3382e235\nposition: Synthetic retained position 0 [interpreted; confidence undetermined]\nDigital evidence, provider attribution, human access and physical calibration remain separate.",
+                    "report_ref": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235"
+                  }
+                }
+              },
+              "lineage": {
+                "parent_akousma_ids": []
+              },
+              "tags": [],
+              "annotations": {},
+              "summary": "Synthetic retained account 0",
+              "auditum": {
+                "contract": "earworm/auditum/v3",
+                "listenings": [
+                  {
+                    "listening_id": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                    "listener_id": "agent:fixture",
+                    "listener_type": "agent",
+                    "created_at": "2026-09-07T15:49:55.431Z",
+                    "report_namespace": "oida.agent-report",
+                    "contract": "akouo/agent-report/v0.1",
+                    "listening_pass_ref": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983"
+                  }
+                ],
+                "route_decisions": [
+                  {
+                    "decision_id": "decision:e4fdfdad-6b76-4388-9c47-fc066d474e0c",
+                    "gate": "inference",
+                    "outcome": "proceed",
+                    "subject": "fixture:subject",
+                    "reason": "Bounded local report construction; no action authority",
+                    "decided_at": "2026-09-07T15:49:55.431Z",
+                    "listening_id": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                    "producer_contract": "akouo/agent-report/v0.1",
+                    "authority": {
+                      "mode": "observe_only",
+                      "actor": "agent:fixture",
+                      "requires_confirmation": true,
+                      "reversible": true
+                    }
+                  }
+                ],
+                "actions": [],
+                "disagreements": [],
+                "honest_absences": [
+                  {
+                    "id": "absence:79a0e0f3-8de6-4f17-8306-75d7fec0ac84",
+                    "kind": "not_retained",
+                    "subject": "raw audio",
+                    "attributed_to": "owner retention boundary",
+                    "listening_id": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                    "count": 1,
+                    "note": "No raw audio asset is retained in this account"
+                  }
+                ]
+              },
+              "extensions": {
+                "earworm_listening_access": {
+                  "contract": "earworm/listening-access/v1",
+                  "declaration_id": "access:2526d572-44f7-4b92-bc04-77ca622c47d8",
+                  "subject_ref": "fixture:subject",
+                  "capture": {
+                    "status": "unknown",
+                    "reason": "Retained records only"
+                  },
+                  "sampled_representation": {
+                    "status": "unknown",
+                    "reason": "No audio source opened"
+                  },
+                  "model_input": {
+                    "status": "not_applicable",
+                    "reason": "Textual retained-record reasoning; no audio model input"
+                  },
+                  "human_access": [
+                    {
+                      "status": "unknown",
+                      "reason": "Text rendering is not human audio access"
+                    }
+                  ]
+                },
+                "earworm_listening_context": {
+                  "contract": "earworm/listening-context/v1",
+                  "contexts": [
+                    {
+                      "listening_ref": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                      "subject_ref": "fixture:subject",
+                      "recipients": [
+                        {
+                          "id": "oida:owner",
+                          "type": "human"
+                        }
+                      ],
+                      "access_declaration_ref": "access:2526d572-44f7-4b92-bc04-77ca622c47d8",
+                      "report": {
+                        "ref": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                        "contract": "akouo/agent-report/v0.1",
+                        "format": "structured",
+                        "readability": {
+                          "status": "known",
+                          "value": "machine_readable"
+                        },
+                        "human_rendering": {
+                          "status": "available",
+                          "rendering_refs": [
+                            "rendering:9c7b11a0-1542-4e1d-be52-65b2410ae5e8"
+                          ]
+                        }
+                      },
+                      "renderings": [
+                        {
+                          "rendering_id": "rendering:9c7b11a0-1542-4e1d-be52-65b2410ae5e8",
+                          "source_ref": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                          "output_ref": "text:report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                          "transformation_ref": "render:report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                          "author_ref": "oida:structured-reporter",
+                          "kind": "interpretation",
+                          "media_type": "text/plain",
+                          "access": {
+                            "status": "known",
+                            "value": "private"
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "claims": [
+                    {
+                      "claim_ref": "claim:334f6881-a0f5-48cb-a447-e34f761df211",
+                      "listening_ref": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                      "validity": {
+                        "status": "unknown",
+                        "reason": "No validity interval declared"
+                      },
+                      "retention": {
+                        "status": "unknown",
+                        "reason": "Owner retention policy"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "skill": "companions/skills/second-report/SKILL.md",
+          "execution": "not_requested"
+        }
+      },
+      "oida.second-report-execution": {
+        "contract": "oida/second-report-execution/v1",
+        "payload": {
+          "response": {
+            "contract": "oida/reasoning-response/v0.1",
+            "answer_blocks": [
+              {
+                "kind": "dialogue",
+                "text": "No explicit uncertainty notes were included in this packet.",
+                "evidence_refs": [
+                  "event:ak-bc8e0079-da9a-4235-8cd6-a6b0f70c748d:anchor"
+                ]
+              }
+            ],
+            "hypotheses": [],
+            "uncertainties": [],
+            "suggested_questions": [
+              "Which parts are measured versus inferred?"
+            ],
+            "requested_action": null
+          },
+          "execution": {
+            "selected_provider_id": "local_structured",
+            "provider_id": "local_structured",
+            "model_id": "oida-deterministic-v1",
+            "locality": "local",
+            "repaired": false,
+            "attempts": 1,
+            "host_managed": false,
+            "fallback": null
+          },
+          "evidence_packet": {
+            "contract": "oida/evidence-packet/v0.1",
+            "primary_event_id": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+            "comparison_event_ids": [],
+            "question": "What remains uncertain?",
+            "items": [
+              {
+                "ref": "event:ak-bc8e0079-da9a-4235-8cd6-a6b0f70c748d:anchor",
+                "kind": "event_anchor",
+                "value": {
+                  "event_id": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d"
+                },
+                "event_id": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+                "category": null,
+                "confidence": null,
+                "basis": null,
+                "source": "oida",
+                "time_range": null
+              },
+              {
+                "ref": "event:ak-bc8e0079-da9a-4235-8cd6-a6b0f70c748d:summary:short_summary",
+                "kind": "summary",
+                "value": "Synthetic retained account 0",
+                "event_id": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+                "category": null,
+                "confidence": null,
+                "basis": null,
+                "source": null,
+                "time_range": null
+              },
+              {
+                "ref": "event:ak-bc8e0079-da9a-4235-8cd6-a6b0f70c748d:claim:undetermined:0",
+                "kind": "claim",
+                "value": "Retained interpreted claim: Synthetic retained position 0",
+                "event_id": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+                "category": "undetermined",
+                "confidence": "undetermined",
+                "basis": null,
+                "source": "memory",
+                "time_range": null
+              }
+            ],
+            "permissions": {
+              "transcript_included": false,
+              "memory_content_included": false,
+              "raw_audio_included": false,
+              "external_safe": true
+            },
+            "covenant": null,
+            "untrusted_data": true
+          },
+          "pass_id": "turn_2fa1e1db29ca4a5ab1b04599e55608df",
+          "report_pass_ref": "pass:82ceb3ae-d096-4f8c-af49-cb9c9a619463",
+          "permission_ref": "fixture-owner"
+        }
+      }
+    },
+    "lineage": {
+      "parent_akousma_ids": [
+        "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d"
+      ]
+    },
+    "tags": [],
+    "annotations": {},
+    "summary": "Second report on retained evidence",
+    "auditum": {
+      "contract": "earworm/auditum/v3",
+      "listenings": [
+        {
+          "listening_id": "listening:b1357126-c709-41e6-9fb0-8b5d1e34541d",
+          "listener_id": "oida:structured-reporter",
+          "listener_type": "agent",
+          "created_at": "2026-09-07T15:49:55.827Z",
+          "report_namespace": "oida.agent-report",
+          "contract": "akouo/agent-report/v0.1",
+          "listening_pass_ref": "pass:82ceb3ae-d096-4f8c-af49-cb9c9a619463"
+        }
+      ],
+      "route_decisions": [
+        {
+          "decision_id": "decision:6347afff-ab2c-407d-9c1d-35bea4dc82ad",
+          "gate": "inference",
+          "outcome": "proceed",
+          "subject": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+          "reason": "Bounded local report construction; no action authority",
+          "decided_at": "2026-09-07T15:49:55.827Z",
+          "listening_id": "listening:b1357126-c709-41e6-9fb0-8b5d1e34541d",
+          "producer_contract": "akouo/agent-report/v0.1",
+          "authority": {
+            "mode": "observe_only",
+            "actor": "oida:structured-reporter",
+            "requires_confirmation": true,
+            "reversible": true
+          }
+        }
+      ],
+      "actions": [],
+      "disagreements": [],
+      "honest_absences": [
+        {
+          "id": "absence:50ad06f1-dbbf-4af9-a04b-39e7744ee184",
+          "kind": "not_retained",
+          "subject": "raw audio",
+          "attributed_to": "owner retention boundary",
+          "listening_id": "listening:b1357126-c709-41e6-9fb0-8b5d1e34541d",
+          "count": 1,
+          "note": "No raw audio asset is retained in this account"
+        }
+      ]
+    },
+    "extensions": {
+      "earworm_listening_access": {
+        "contract": "earworm/listening-access/v1",
+        "declaration_id": "access:2a034eb2-6355-4e0f-be1d-f7b5c5995d20",
+        "subject_ref": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+        "capture": {
+          "status": "unknown",
+          "reason": "Retained records only"
+        },
+        "sampled_representation": {
+          "status": "unknown",
+          "reason": "No audio source opened"
+        },
+        "model_input": {
+          "status": "not_applicable",
+          "reason": "Textual retained-record reasoning; no audio model input"
+        },
+        "human_access": [
+          {
+            "status": "unknown",
+            "reason": "Text rendering is not human audio access"
+          }
+        ]
+      },
+      "earworm_listening_context": {
+        "contract": "earworm/listening-context/v1",
+        "contexts": [
+          {
+            "listening_ref": "listening:b1357126-c709-41e6-9fb0-8b5d1e34541d",
+            "subject_ref": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+            "recipients": [
+              {
+                "id": "oida:owner",
+                "type": "human"
+              }
+            ],
+            "access_declaration_ref": "access:2a034eb2-6355-4e0f-be1d-f7b5c5995d20",
+            "report": {
+              "ref": "report:ff5a7704-4a96-46f7-8b8a-996ce2fb2f0c",
+              "contract": "akouo/agent-report/v0.1",
+              "format": "structured",
+              "readability": {
+                "status": "known",
+                "value": "machine_readable"
+              },
+              "human_rendering": {
+                "status": "available",
+                "rendering_refs": [
+                  "rendering:d682e6c1-7080-4bea-9156-a3f072a379b9"
+                ]
+              }
+            },
+            "renderings": [
+              {
+                "rendering_id": "rendering:d682e6c1-7080-4bea-9156-a3f072a379b9",
+                "source_ref": "report:ff5a7704-4a96-46f7-8b8a-996ce2fb2f0c",
+                "output_ref": "text:report:ff5a7704-4a96-46f7-8b8a-996ce2fb2f0c",
+                "transformation_ref": "render:report:ff5a7704-4a96-46f7-8b8a-996ce2fb2f0c",
+                "author_ref": "oida:structured-reporter",
+                "kind": "interpretation",
+                "media_type": "text/plain",
+                "access": {
+                  "status": "known",
+                  "value": "private"
+                }
+              }
+            ]
+          }
+        ],
+        "claims": [
+          {
+            "claim_ref": "claim:9a5b035f-8bbe-44a2-a9f4-4a312095790f",
+            "listening_ref": "listening:b1357126-c709-41e6-9fb0-8b5d1e34541d",
+            "validity": {
+              "status": "unknown",
+              "reason": "No validity interval declared"
+            },
+            "retention": {
+              "status": "unknown",
+              "reason": "Owner retention policy"
+            }
+          },
+          {
+            "claim_ref": "claim:a8d04883-9d81-4b08-84eb-680e802cde9e",
+            "listening_ref": "listening:b1357126-c709-41e6-9fb0-8b5d1e34541d",
+            "validity": {
+              "status": "unknown",
+              "reason": "No validity interval declared"
+            },
+            "retention": {
+              "status": "unknown",
+              "reason": "Owner retention policy"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "influenced": {
+    "akousma_id": "ak:dd216418-23f6-436a-9d0e-28c6289f9264",
+    "schema_version": "1.7.0",
+    "created_at": "2026-09-07T15:49:55.772Z",
+    "subject": "retained-ensemble:7b9aac5e-4078-48a9-8965-e448c90bfc8c",
+    "provenance": {
+      "source_type": "unknown",
+      "origin": "unknown",
+      "originating_app": "oida",
+      "created_at": "2026-09-07T15:49:55.772Z"
+    },
+    "listening": {
+      "oida.agent-report": {
+        "contract": "akouo/agent-report/v0.1",
+        "payload": {
+          "contract": "akouo/agent-report/v0.1",
+          "report_id": "report:d696ea7f-ea8d-4aad-9820-426e531ec112",
+          "listener_id": "oida:structured-reporter",
+          "listening_pass_id": "pass:dff4d96b-1978-4dd2-92e6-bcde9cf09917",
+          "subject_ref": "retained-ensemble:7b9aac5e-4078-48a9-8965-e448c90bfc8c",
+          "input_refs": [
+            "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+            "influence-target:fixture"
+          ],
+          "apparatus_ref": "access:6c7a8ff6-a854-4e46-ac58-aec588720349",
+          "report_format": "structured",
+          "recipients": [
+            {
+              "id": "oida:owner",
+              "type": "human"
+            }
+          ],
+          "report_of_refs": [
+            "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+            "influence-target:fixture"
+          ],
+          "features": [],
+          "limitations": [
+            "Digital evidence, provider attribution, human access and physical calibration remain separate.",
+            "Retained decision-change attribution; no new pass or independent causal measurement."
+          ]
+        }
+      },
+      "oida.report-text": {
+        "contract": "oida/report-text/v1",
+        "payload": {
+          "text": "Report report:d696ea7f-ea8d-4aad-9820-426e531ec112\nDigital evidence, provider attribution, human access and physical calibration remain separate.\nRetained decision-change attribution; no new pass or independent causal measurement.",
+          "report_ref": "report:d696ea7f-ea8d-4aad-9820-426e531ec112"
+        }
+      },
+      "oida.influence-evidence": {
+        "contract": "oida/influence-evidence/v1",
+        "payload": {
+          "traces": [
+            {
+              "source_record_ref": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+              "target_record_ref": "influence-target:fixture",
+              "trace_namespace": "fixture.influence",
+              "trace": {
+                "contract": "oida/decision-influence/v1",
+                "trace_id": "trace",
+                "source_record_ref": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+                "from_pass_ref": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                "to_pass_ref": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+                "input_report_ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                "before_decision_ref": "before",
+                "after_decision_ref": "after",
+                "attributed_by": "human:fixture",
+                "permission_ref": "fixture-owner"
+              },
+              "before": {
+                "decision_id": "before",
+                "gate": "inference",
+                "outcome": "abstain",
+                "subject": "fixture:subject",
+                "reason": "Bounded local report construction; no action authority",
+                "decided_at": "2026-09-07T15:49:56.431Z",
+                "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                "producer_contract": "akouo/agent-report/v0.1",
+                "authority": {
+                  "mode": "observe_only",
+                  "actor": "human:fixture",
+                  "requires_confirmation": true,
+                  "reversible": true
+                }
+              },
+              "after": {
+                "decision_id": "after",
+                "gate": "inference",
+                "outcome": "proceed",
+                "subject": "fixture:subject",
+                "reason": "Bounded local report construction; no action authority",
+                "decided_at": "2026-09-07T15:49:57.431Z",
+                "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                "producer_contract": "akouo/agent-report/v0.1",
+                "authority": {
+                  "mode": "observe_only",
+                  "actor": "human:fixture",
+                  "requires_confirmation": true,
+                  "reversible": true
+                }
+              },
+              "input_report_ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+              "effect": "Recorded inference decision changed from abstain to proceed",
+              "basis": "Retained participant attribution and decision change; not independent causal measurement"
+            }
+          ]
+        }
+      },
+      "retained:ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d": {
+        "contract": "akouo/retained-listening/v0.1",
+        "payload": {
+          "record": {
+            "akousma_id": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+            "schema_version": "1.7.0",
+            "created_at": "2026-09-07T15:49:55.431Z",
+            "subject": "fixture:subject",
+            "provenance": {
+              "source_type": "unknown",
+              "origin": "unknown",
+              "originating_app": "oida",
+              "created_at": "2026-09-07T15:49:55.431Z"
+            },
+            "listening": {
+              "oida.agent-report": {
+                "contract": "akouo/agent-report/v0.1",
+                "payload": {
+                  "contract": "akouo/agent-report/v0.1",
+                  "report_id": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                  "listener_id": "agent:fixture",
+                  "listening_pass_id": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                  "subject_ref": "fixture:subject",
+                  "input_refs": [
+                    "fixture:subject"
+                  ],
+                  "apparatus_ref": "access:2526d572-44f7-4b92-bc04-77ca622c47d8",
+                  "report_format": "structured",
+                  "recipients": [
+                    {
+                      "id": "oida:owner",
+                      "type": "human"
+                    }
+                  ],
+                  "report_of_refs": [],
+                  "features": [
+                    {
+                      "namespace": "fixture",
+                      "name": "position",
+                      "category": "interpreted",
+                      "value": {
+                        "status": "unknown",
+                        "reason": "Synthetic fixture"
+                      },
+                      "claim": {
+                        "statement": "Synthetic retained position 0",
+                        "source": "memory",
+                        "confidence": "undetermined",
+                        "evidence_refs": [
+                          "fixture:subject"
+                        ],
+                        "actionability": "none",
+                        "claim_id": "claim:334f6881-a0f5-48cb-a447-e34f761df211",
+                        "listening_pass_id": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983"
+                      },
+                      "feature_id": "feature:7d6f7660-b6a9-4c9b-8851-99f7c508a47c"
+                    }
+                  ],
+                  "limitations": [
+                    "Digital evidence, provider attribution, human access and physical calibration remain separate."
+                  ]
+                }
+              },
+              "oida.report-text": {
+                "contract": "oida/report-text/v1",
+                "payload": {
+                  "text": "Report report:8c11ad76-1eed-4a9f-8d26-655c3382e235\nposition: Synthetic retained position 0 [interpreted; confidence undetermined]\nDigital evidence, provider attribution, human access and physical calibration remain separate.",
+                  "report_ref": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235"
+                }
+              }
+            },
+            "lineage": {
+              "parent_akousma_ids": []
+            },
+            "tags": [],
+            "annotations": {},
+            "summary": "Synthetic retained account 0",
+            "auditum": {
+              "contract": "earworm/auditum/v3",
+              "listenings": [
+                {
+                  "listening_id": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                  "listener_id": "agent:fixture",
+                  "listener_type": "agent",
+                  "created_at": "2026-09-07T15:49:55.431Z",
+                  "report_namespace": "oida.agent-report",
+                  "contract": "akouo/agent-report/v0.1",
+                  "listening_pass_ref": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983"
+                }
+              ],
+              "route_decisions": [
+                {
+                  "decision_id": "decision:e4fdfdad-6b76-4388-9c47-fc066d474e0c",
+                  "gate": "inference",
+                  "outcome": "proceed",
+                  "subject": "fixture:subject",
+                  "reason": "Bounded local report construction; no action authority",
+                  "decided_at": "2026-09-07T15:49:55.431Z",
+                  "listening_id": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                  "producer_contract": "akouo/agent-report/v0.1",
+                  "authority": {
+                    "mode": "observe_only",
+                    "actor": "agent:fixture",
+                    "requires_confirmation": true,
+                    "reversible": true
+                  }
+                }
+              ],
+              "actions": [],
+              "disagreements": [],
+              "honest_absences": [
+                {
+                  "id": "absence:79a0e0f3-8de6-4f17-8306-75d7fec0ac84",
+                  "kind": "not_retained",
+                  "subject": "raw audio",
+                  "attributed_to": "owner retention boundary",
+                  "listening_id": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                  "count": 1,
+                  "note": "No raw audio asset is retained in this account"
+                }
+              ]
+            },
+            "extensions": {
+              "earworm_listening_access": {
+                "contract": "earworm/listening-access/v1",
+                "declaration_id": "access:2526d572-44f7-4b92-bc04-77ca622c47d8",
+                "subject_ref": "fixture:subject",
+                "capture": {
+                  "status": "unknown",
+                  "reason": "Retained records only"
+                },
+                "sampled_representation": {
+                  "status": "unknown",
+                  "reason": "No audio source opened"
+                },
+                "model_input": {
+                  "status": "not_applicable",
+                  "reason": "Textual retained-record reasoning; no audio model input"
+                },
+                "human_access": [
+                  {
+                    "status": "unknown",
+                    "reason": "Text rendering is not human audio access"
+                  }
+                ]
+              },
+              "earworm_listening_context": {
+                "contract": "earworm/listening-context/v1",
+                "contexts": [
+                  {
+                    "listening_ref": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                    "subject_ref": "fixture:subject",
+                    "recipients": [
+                      {
+                        "id": "oida:owner",
+                        "type": "human"
+                      }
+                    ],
+                    "access_declaration_ref": "access:2526d572-44f7-4b92-bc04-77ca622c47d8",
+                    "report": {
+                      "ref": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                      "contract": "akouo/agent-report/v0.1",
+                      "format": "structured",
+                      "readability": {
+                        "status": "known",
+                        "value": "machine_readable"
+                      },
+                      "human_rendering": {
+                        "status": "available",
+                        "rendering_refs": [
+                          "rendering:9c7b11a0-1542-4e1d-be52-65b2410ae5e8"
+                        ]
+                      }
+                    },
+                    "renderings": [
+                      {
+                        "rendering_id": "rendering:9c7b11a0-1542-4e1d-be52-65b2410ae5e8",
+                        "source_ref": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                        "output_ref": "text:report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                        "transformation_ref": "render:report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                        "author_ref": "oida:structured-reporter",
+                        "kind": "interpretation",
+                        "media_type": "text/plain",
+                        "access": {
+                          "status": "known",
+                          "value": "private"
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "claims": [
+                  {
+                    "claim_ref": "claim:334f6881-a0f5-48cb-a447-e34f761df211",
+                    "listening_ref": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                    "validity": {
+                      "status": "unknown",
+                      "reason": "No validity interval declared"
+                    },
+                    "retention": {
+                      "status": "unknown",
+                      "reason": "Owner retention policy"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "retained:influence-target:fixture": {
+        "contract": "akouo/retained-listening/v0.1",
+        "payload": {
+          "record": {
+            "akousma_id": "influence-target:fixture",
+            "schema_version": "1.7.0",
+            "created_at": "2026-09-07T15:49:55.437Z",
+            "subject": "fixture:subject",
+            "provenance": {
+              "source_type": "unknown",
+              "origin": "unknown",
+              "originating_app": "oida",
+              "created_at": "2026-09-07T15:49:55.437Z"
+            },
+            "listening": {
+              "oida.agent-report": {
+                "contract": "akouo/agent-report/v0.1",
+                "payload": {
+                  "contract": "akouo/agent-report/v0.1",
+                  "report_id": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                  "listener_id": "human:fixture",
+                  "listening_pass_id": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+                  "subject_ref": "fixture:subject",
+                  "input_refs": [
+                    "fixture:subject",
+                    "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d"
+                  ],
+                  "apparatus_ref": "access:71622985-4f14-4874-bddc-71117c8d367f",
+                  "report_format": "structured",
+                  "recipients": [
+                    {
+                      "id": "oida:owner",
+                      "type": "human"
+                    }
+                  ],
+                  "report_of_refs": [
+                    "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d"
+                  ],
+                  "features": [
+                    {
+                      "namespace": "fixture",
+                      "name": "position",
+                      "category": "interpreted",
+                      "value": {
+                        "status": "unknown",
+                        "reason": "Synthetic fixture"
+                      },
+                      "claim": {
+                        "statement": "Synthetic retained position 1",
+                        "source": "memory",
+                        "confidence": "undetermined",
+                        "evidence_refs": [
+                          "fixture:subject"
+                        ],
+                        "actionability": "none",
+                        "claim_id": "claim:2c8360e2-0ed3-47f6-a967-dc8f4fcd2f1c",
+                        "listening_pass_id": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9"
+                      },
+                      "feature_id": "feature:d63f0dbb-f339-4ff4-a938-c07d4ebfc2e5"
+                    }
+                  ],
+                  "limitations": [
+                    "Digital evidence, provider attribution, human access and physical calibration remain separate."
+                  ]
+                }
+              },
+              "oida.report-text": {
+                "contract": "oida/report-text/v1",
+                "payload": {
+                  "text": "Report report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96\nposition: Synthetic retained position 1 [interpreted; confidence undetermined]\nDigital evidence, provider attribution, human access and physical calibration remain separate.",
+                  "report_ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96"
+                }
+              },
+              "fixture.influence": {
+                "contract": "oida/decision-influence/v1",
+                "payload": {
+                  "contract": "oida/decision-influence/v1",
+                  "trace_id": "trace",
+                  "source_record_ref": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+                  "from_pass_ref": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                  "to_pass_ref": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+                  "input_report_ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                  "before_decision_ref": "before",
+                  "after_decision_ref": "after",
+                  "attributed_by": "human:fixture",
+                  "permission_ref": "fixture-owner"
+                }
+              }
+            },
+            "lineage": {
+              "parent_akousma_ids": []
+            },
+            "tags": [],
+            "annotations": {},
+            "summary": "Synthetic retained account 1",
+            "auditum": {
+              "contract": "earworm/auditum/v3",
+              "listenings": [
+                {
+                  "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                  "listener_id": "human:fixture",
+                  "listener_type": "human",
+                  "created_at": "2026-09-07T15:49:55.437Z",
+                  "report_namespace": "oida.agent-report",
+                  "contract": "akouo/agent-report/v0.1",
+                  "listening_pass_ref": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+                  "route_decision_refs": [
+                    "before",
+                    "after"
+                  ]
+                }
+              ],
+              "route_decisions": [
+                {
+                  "decision_id": "before",
+                  "gate": "inference",
+                  "outcome": "abstain",
+                  "subject": "fixture:subject",
+                  "reason": "Bounded local report construction; no action authority",
+                  "decided_at": "2026-09-07T15:49:56.431Z",
+                  "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                  "producer_contract": "akouo/agent-report/v0.1",
+                  "authority": {
+                    "mode": "observe_only",
+                    "actor": "human:fixture",
+                    "requires_confirmation": true,
+                    "reversible": true
+                  }
+                },
+                {
+                  "decision_id": "after",
+                  "gate": "inference",
+                  "outcome": "proceed",
+                  "subject": "fixture:subject",
+                  "reason": "Bounded local report construction; no action authority",
+                  "decided_at": "2026-09-07T15:49:57.431Z",
+                  "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                  "producer_contract": "akouo/agent-report/v0.1",
+                  "authority": {
+                    "mode": "observe_only",
+                    "actor": "human:fixture",
+                    "requires_confirmation": true,
+                    "reversible": true
+                  }
+                }
+              ],
+              "actions": [],
+              "disagreements": [],
+              "honest_absences": [
+                {
+                  "id": "absence:0f8d23c3-eaa1-496f-aac1-a454ad249edf",
+                  "kind": "not_retained",
+                  "subject": "raw audio",
+                  "attributed_to": "owner retention boundary",
+                  "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                  "count": 1,
+                  "note": "No raw audio asset is retained in this account"
+                }
+              ]
+            },
+            "extensions": {
+              "earworm_listening_access": {
+                "contract": "earworm/listening-access/v1",
+                "declaration_id": "access:71622985-4f14-4874-bddc-71117c8d367f",
+                "subject_ref": "fixture:subject",
+                "capture": {
+                  "status": "unknown",
+                  "reason": "Retained records only"
+                },
+                "sampled_representation": {
+                  "status": "unknown",
+                  "reason": "No audio source opened"
+                },
+                "model_input": {
+                  "status": "not_applicable",
+                  "reason": "Textual retained-record reasoning; no audio model input"
+                },
+                "human_access": [
+                  {
+                    "status": "unknown",
+                    "reason": "Text rendering is not human audio access"
+                  }
+                ]
+              },
+              "earworm_listening_context": {
+                "contract": "earworm/listening-context/v1",
+                "contexts": [
+                  {
+                    "listening_ref": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                    "subject_ref": "fixture:subject",
+                    "recipients": [
+                      {
+                        "id": "oida:owner",
+                        "type": "human"
+                      }
+                    ],
+                    "access_declaration_ref": "access:71622985-4f14-4874-bddc-71117c8d367f",
+                    "report": {
+                      "ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                      "contract": "akouo/agent-report/v0.1",
+                      "format": "structured",
+                      "readability": {
+                        "status": "known",
+                        "value": "machine_readable"
+                      },
+                      "human_rendering": {
+                        "status": "available",
+                        "rendering_refs": [
+                          "rendering:f290c495-d04f-48f5-8fbc-8732d7c71199"
+                        ]
+                      }
+                    },
+                    "renderings": [
+                      {
+                        "rendering_id": "rendering:f290c495-d04f-48f5-8fbc-8732d7c71199",
+                        "source_ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                        "output_ref": "text:report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                        "transformation_ref": "render:report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                        "author_ref": "oida:structured-reporter",
+                        "kind": "interpretation",
+                        "media_type": "text/plain",
+                        "access": {
+                          "status": "known",
+                          "value": "private"
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "claims": [
+                  {
+                    "claim_ref": "claim:2c8360e2-0ed3-47f6-a967-dc8f4fcd2f1c",
+                    "listening_ref": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                    "validity": {
+                      "status": "unknown",
+                      "reason": "No validity interval declared"
+                    },
+                    "retention": {
+                      "status": "unknown",
+                      "reason": "Owner retention policy"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "akouo.retained-ensemble": {
+        "contract": "akouo/retained-ensemble/v0.1",
+        "payload": {
+          "contract": "akouo/retained-ensemble/v0.1",
+          "adapted": {
+            "listenings": [
+              {
+                "listening_id": "aggregate:pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                "listener_id": "agent:fixture",
+                "listener_type": "agent",
+                "created_at": "2026-09-07T15:49:55.431Z",
+                "report_namespace": "retained:ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+                "contract": "akouo/retained-listening/v0.1",
+                "route": [
+                  "memory-lineage-listening"
+                ],
+                "listening_pass_ref": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                "route_decision_refs": [],
+                "influenced_by": []
+              },
+              {
+                "listening_id": "aggregate:pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+                "listener_id": "human:fixture",
+                "listener_type": "human",
+                "created_at": "2026-09-07T15:49:55.437Z",
+                "report_namespace": "retained:influence-target:fixture",
+                "contract": "akouo/retained-listening/v0.1",
+                "route": [
+                  "memory-lineage-listening"
+                ],
+                "listening_pass_ref": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+                "route_decision_refs": [],
+                "influenced_by": [
+                  {
+                    "listening_id": "aggregate:pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                    "effect": "Recorded inference decision changed from abstain to proceed"
+                  }
+                ]
+              }
+            ],
+            "ensemble": {
+              "id": "ensemble:7b3f1b67-a16f-4b29-99b0-12ceb39e9ff4",
+              "kind": "ear_swarm",
+              "listening_ids": [
+                "aggregate:pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                "aggregate:pass:3fbc6a53-fd6d-462b-953f-7f68326006e9"
+              ],
+              "influence_edges": [
+                {
+                  "from_listening_id": "aggregate:pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                  "to_listening_id": "aggregate:pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+                  "effect": "Recorded inference decision changed from abstain to proceed"
+                }
+              ],
+              "permissions_preserved": true,
+              "disagreements_preserved": true,
+              "dissolution_rule": "Stop after these retained inputs; no new listening or inferred influence"
+            },
+            "pass_to_listening": {
+              "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983": "aggregate:pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+              "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9": "aggregate:pass:3fbc6a53-fd6d-462b-953f-7f68326006e9"
+            },
+            "source": {
+              "passes": [
+                {
+                  "id": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                  "listener_id": "agent:fixture",
+                  "route": [
+                    "memory-lineage-listening"
+                  ],
+                  "started_at": "2026-09-07T15:49:55.431Z",
+                  "moment": {
+                    "relation": "archive",
+                    "scales": [
+                      "archive"
+                    ]
+                  },
+                  "source_refs": [
+                    "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d"
+                  ],
+                  "claim_refs": [],
+                  "decision_refs": [],
+                  "influenced_by": []
+                },
+                {
+                  "id": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+                  "listener_id": "human:fixture",
+                  "route": [
+                    "memory-lineage-listening"
+                  ],
+                  "started_at": "2026-09-07T15:49:55.437Z",
+                  "moment": {
+                    "relation": "archive",
+                    "scales": [
+                      "archive"
+                    ]
+                  },
+                  "source_refs": [
+                    "influence-target:fixture"
+                  ],
+                  "claim_refs": [],
+                  "decision_refs": [],
+                  "influenced_by": [
+                    {
+                      "pass_id": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                      "effect": "Recorded inference decision changed from abstain to proceed"
+                    }
+                  ]
+                }
+              ],
+              "participants": [
+                {
+                  "id": "agent:fixture",
+                  "type": "agent"
+                },
+                {
+                  "id": "human:fixture",
+                  "type": "human"
+                }
+              ],
+              "ensemble": {
+                "id": "ensemble:7b3f1b67-a16f-4b29-99b0-12ceb39e9ff4",
+                "kind": "ear_swarm",
+                "participant_ids": [
+                  "agent:fixture",
+                  "human:fixture"
+                ],
+                "listening_pass_ids": [
+                  "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                  "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9"
+                ],
+                "influence_edges": [
+                  {
+                    "from_pass_id": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                    "to_pass_id": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+                    "effect": "Recorded inference decision changed from abstain to proceed"
+                  }
+                ],
+                "permissions_preserved": true,
+                "disagreements_preserved": true,
+                "dissolution_rule": "Stop after these retained inputs; no new listening or inferred influence"
+              }
+            }
+          },
+          "source_snapshots": {
+            "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d": {
+              "akousma_id": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+              "schema_version": "1.7.0",
+              "created_at": "2026-09-07T15:49:55.431Z",
+              "subject": "fixture:subject",
+              "provenance": {
+                "source_type": "unknown",
+                "origin": "unknown",
+                "originating_app": "oida",
+                "created_at": "2026-09-07T15:49:55.431Z"
+              },
+              "listening": {
+                "oida.agent-report": {
+                  "contract": "akouo/agent-report/v0.1",
+                  "payload": {
+                    "contract": "akouo/agent-report/v0.1",
+                    "report_id": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                    "listener_id": "agent:fixture",
+                    "listening_pass_id": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                    "subject_ref": "fixture:subject",
+                    "input_refs": [
+                      "fixture:subject"
+                    ],
+                    "apparatus_ref": "access:2526d572-44f7-4b92-bc04-77ca622c47d8",
+                    "report_format": "structured",
+                    "recipients": [
+                      {
+                        "id": "oida:owner",
+                        "type": "human"
+                      }
+                    ],
+                    "report_of_refs": [],
+                    "features": [
+                      {
+                        "namespace": "fixture",
+                        "name": "position",
+                        "category": "interpreted",
+                        "value": {
+                          "status": "unknown",
+                          "reason": "Synthetic fixture"
+                        },
+                        "claim": {
+                          "statement": "Synthetic retained position 0",
+                          "source": "memory",
+                          "confidence": "undetermined",
+                          "evidence_refs": [
+                            "fixture:subject"
+                          ],
+                          "actionability": "none",
+                          "claim_id": "claim:334f6881-a0f5-48cb-a447-e34f761df211",
+                          "listening_pass_id": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983"
+                        },
+                        "feature_id": "feature:7d6f7660-b6a9-4c9b-8851-99f7c508a47c"
+                      }
+                    ],
+                    "limitations": [
+                      "Digital evidence, provider attribution, human access and physical calibration remain separate."
+                    ]
+                  }
+                },
+                "oida.report-text": {
+                  "contract": "oida/report-text/v1",
+                  "payload": {
+                    "text": "Report report:8c11ad76-1eed-4a9f-8d26-655c3382e235\nposition: Synthetic retained position 0 [interpreted; confidence undetermined]\nDigital evidence, provider attribution, human access and physical calibration remain separate.",
+                    "report_ref": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235"
+                  }
+                }
+              },
+              "lineage": {
+                "parent_akousma_ids": []
+              },
+              "tags": [],
+              "annotations": {},
+              "summary": "Synthetic retained account 0",
+              "auditum": {
+                "contract": "earworm/auditum/v3",
+                "listenings": [
+                  {
+                    "listening_id": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                    "listener_id": "agent:fixture",
+                    "listener_type": "agent",
+                    "created_at": "2026-09-07T15:49:55.431Z",
+                    "report_namespace": "oida.agent-report",
+                    "contract": "akouo/agent-report/v0.1",
+                    "listening_pass_ref": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983"
+                  }
+                ],
+                "route_decisions": [
+                  {
+                    "decision_id": "decision:e4fdfdad-6b76-4388-9c47-fc066d474e0c",
+                    "gate": "inference",
+                    "outcome": "proceed",
+                    "subject": "fixture:subject",
+                    "reason": "Bounded local report construction; no action authority",
+                    "decided_at": "2026-09-07T15:49:55.431Z",
+                    "listening_id": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                    "producer_contract": "akouo/agent-report/v0.1",
+                    "authority": {
+                      "mode": "observe_only",
+                      "actor": "agent:fixture",
+                      "requires_confirmation": true,
+                      "reversible": true
+                    }
+                  }
+                ],
+                "actions": [],
+                "disagreements": [],
+                "honest_absences": [
+                  {
+                    "id": "absence:79a0e0f3-8de6-4f17-8306-75d7fec0ac84",
+                    "kind": "not_retained",
+                    "subject": "raw audio",
+                    "attributed_to": "owner retention boundary",
+                    "listening_id": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                    "count": 1,
+                    "note": "No raw audio asset is retained in this account"
+                  }
+                ]
+              },
+              "extensions": {
+                "earworm_listening_access": {
+                  "contract": "earworm/listening-access/v1",
+                  "declaration_id": "access:2526d572-44f7-4b92-bc04-77ca622c47d8",
+                  "subject_ref": "fixture:subject",
+                  "capture": {
+                    "status": "unknown",
+                    "reason": "Retained records only"
+                  },
+                  "sampled_representation": {
+                    "status": "unknown",
+                    "reason": "No audio source opened"
+                  },
+                  "model_input": {
+                    "status": "not_applicable",
+                    "reason": "Textual retained-record reasoning; no audio model input"
+                  },
+                  "human_access": [
+                    {
+                      "status": "unknown",
+                      "reason": "Text rendering is not human audio access"
+                    }
+                  ]
+                },
+                "earworm_listening_context": {
+                  "contract": "earworm/listening-context/v1",
+                  "contexts": [
+                    {
+                      "listening_ref": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                      "subject_ref": "fixture:subject",
+                      "recipients": [
+                        {
+                          "id": "oida:owner",
+                          "type": "human"
+                        }
+                      ],
+                      "access_declaration_ref": "access:2526d572-44f7-4b92-bc04-77ca622c47d8",
+                      "report": {
+                        "ref": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                        "contract": "akouo/agent-report/v0.1",
+                        "format": "structured",
+                        "readability": {
+                          "status": "known",
+                          "value": "machine_readable"
+                        },
+                        "human_rendering": {
+                          "status": "available",
+                          "rendering_refs": [
+                            "rendering:9c7b11a0-1542-4e1d-be52-65b2410ae5e8"
+                          ]
+                        }
+                      },
+                      "renderings": [
+                        {
+                          "rendering_id": "rendering:9c7b11a0-1542-4e1d-be52-65b2410ae5e8",
+                          "source_ref": "report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                          "output_ref": "text:report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                          "transformation_ref": "render:report:8c11ad76-1eed-4a9f-8d26-655c3382e235",
+                          "author_ref": "oida:structured-reporter",
+                          "kind": "interpretation",
+                          "media_type": "text/plain",
+                          "access": {
+                            "status": "known",
+                            "value": "private"
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "claims": [
+                    {
+                      "claim_ref": "claim:334f6881-a0f5-48cb-a447-e34f761df211",
+                      "listening_ref": "listening:4a405fce-9008-4432-88f2-bdceaed378de",
+                      "validity": {
+                        "status": "unknown",
+                        "reason": "No validity interval declared"
+                      },
+                      "retention": {
+                        "status": "unknown",
+                        "reason": "Owner retention policy"
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "influence-target:fixture": {
+              "akousma_id": "influence-target:fixture",
+              "schema_version": "1.7.0",
+              "created_at": "2026-09-07T15:49:55.437Z",
+              "subject": "fixture:subject",
+              "provenance": {
+                "source_type": "unknown",
+                "origin": "unknown",
+                "originating_app": "oida",
+                "created_at": "2026-09-07T15:49:55.437Z"
+              },
+              "listening": {
+                "oida.agent-report": {
+                  "contract": "akouo/agent-report/v0.1",
+                  "payload": {
+                    "contract": "akouo/agent-report/v0.1",
+                    "report_id": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                    "listener_id": "human:fixture",
+                    "listening_pass_id": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+                    "subject_ref": "fixture:subject",
+                    "input_refs": [
+                      "fixture:subject",
+                      "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d"
+                    ],
+                    "apparatus_ref": "access:71622985-4f14-4874-bddc-71117c8d367f",
+                    "report_format": "structured",
+                    "recipients": [
+                      {
+                        "id": "oida:owner",
+                        "type": "human"
+                      }
+                    ],
+                    "report_of_refs": [
+                      "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d"
+                    ],
+                    "features": [
+                      {
+                        "namespace": "fixture",
+                        "name": "position",
+                        "category": "interpreted",
+                        "value": {
+                          "status": "unknown",
+                          "reason": "Synthetic fixture"
+                        },
+                        "claim": {
+                          "statement": "Synthetic retained position 1",
+                          "source": "memory",
+                          "confidence": "undetermined",
+                          "evidence_refs": [
+                            "fixture:subject"
+                          ],
+                          "actionability": "none",
+                          "claim_id": "claim:2c8360e2-0ed3-47f6-a967-dc8f4fcd2f1c",
+                          "listening_pass_id": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9"
+                        },
+                        "feature_id": "feature:d63f0dbb-f339-4ff4-a938-c07d4ebfc2e5"
+                      }
+                    ],
+                    "limitations": [
+                      "Digital evidence, provider attribution, human access and physical calibration remain separate."
+                    ]
+                  }
+                },
+                "oida.report-text": {
+                  "contract": "oida/report-text/v1",
+                  "payload": {
+                    "text": "Report report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96\nposition: Synthetic retained position 1 [interpreted; confidence undetermined]\nDigital evidence, provider attribution, human access and physical calibration remain separate.",
+                    "report_ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96"
+                  }
+                },
+                "fixture.influence": {
+                  "contract": "oida/decision-influence/v1",
+                  "payload": {
+                    "contract": "oida/decision-influence/v1",
+                    "trace_id": "trace",
+                    "source_record_ref": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+                    "from_pass_ref": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+                    "to_pass_ref": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+                    "input_report_ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                    "before_decision_ref": "before",
+                    "after_decision_ref": "after",
+                    "attributed_by": "human:fixture",
+                    "permission_ref": "fixture-owner"
+                  }
+                }
+              },
+              "lineage": {
+                "parent_akousma_ids": []
+              },
+              "tags": [],
+              "annotations": {},
+              "summary": "Synthetic retained account 1",
+              "auditum": {
+                "contract": "earworm/auditum/v3",
+                "listenings": [
+                  {
+                    "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                    "listener_id": "human:fixture",
+                    "listener_type": "human",
+                    "created_at": "2026-09-07T15:49:55.437Z",
+                    "report_namespace": "oida.agent-report",
+                    "contract": "akouo/agent-report/v0.1",
+                    "listening_pass_ref": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+                    "route_decision_refs": [
+                      "before",
+                      "after"
+                    ]
+                  }
+                ],
+                "route_decisions": [
+                  {
+                    "decision_id": "before",
+                    "gate": "inference",
+                    "outcome": "abstain",
+                    "subject": "fixture:subject",
+                    "reason": "Bounded local report construction; no action authority",
+                    "decided_at": "2026-09-07T15:49:56.431Z",
+                    "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                    "producer_contract": "akouo/agent-report/v0.1",
+                    "authority": {
+                      "mode": "observe_only",
+                      "actor": "human:fixture",
+                      "requires_confirmation": true,
+                      "reversible": true
+                    }
+                  },
+                  {
+                    "decision_id": "after",
+                    "gate": "inference",
+                    "outcome": "proceed",
+                    "subject": "fixture:subject",
+                    "reason": "Bounded local report construction; no action authority",
+                    "decided_at": "2026-09-07T15:49:57.431Z",
+                    "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                    "producer_contract": "akouo/agent-report/v0.1",
+                    "authority": {
+                      "mode": "observe_only",
+                      "actor": "human:fixture",
+                      "requires_confirmation": true,
+                      "reversible": true
+                    }
+                  }
+                ],
+                "actions": [],
+                "disagreements": [],
+                "honest_absences": [
+                  {
+                    "id": "absence:0f8d23c3-eaa1-496f-aac1-a454ad249edf",
+                    "kind": "not_retained",
+                    "subject": "raw audio",
+                    "attributed_to": "owner retention boundary",
+                    "listening_id": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                    "count": 1,
+                    "note": "No raw audio asset is retained in this account"
+                  }
+                ]
+              },
+              "extensions": {
+                "earworm_listening_access": {
+                  "contract": "earworm/listening-access/v1",
+                  "declaration_id": "access:71622985-4f14-4874-bddc-71117c8d367f",
+                  "subject_ref": "fixture:subject",
+                  "capture": {
+                    "status": "unknown",
+                    "reason": "Retained records only"
+                  },
+                  "sampled_representation": {
+                    "status": "unknown",
+                    "reason": "No audio source opened"
+                  },
+                  "model_input": {
+                    "status": "not_applicable",
+                    "reason": "Textual retained-record reasoning; no audio model input"
+                  },
+                  "human_access": [
+                    {
+                      "status": "unknown",
+                      "reason": "Text rendering is not human audio access"
+                    }
+                  ]
+                },
+                "earworm_listening_context": {
+                  "contract": "earworm/listening-context/v1",
+                  "contexts": [
+                    {
+                      "listening_ref": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                      "subject_ref": "fixture:subject",
+                      "recipients": [
+                        {
+                          "id": "oida:owner",
+                          "type": "human"
+                        }
+                      ],
+                      "access_declaration_ref": "access:71622985-4f14-4874-bddc-71117c8d367f",
+                      "report": {
+                        "ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                        "contract": "akouo/agent-report/v0.1",
+                        "format": "structured",
+                        "readability": {
+                          "status": "known",
+                          "value": "machine_readable"
+                        },
+                        "human_rendering": {
+                          "status": "available",
+                          "rendering_refs": [
+                            "rendering:f290c495-d04f-48f5-8fbc-8732d7c71199"
+                          ]
+                        }
+                      },
+                      "renderings": [
+                        {
+                          "rendering_id": "rendering:f290c495-d04f-48f5-8fbc-8732d7c71199",
+                          "source_ref": "report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                          "output_ref": "text:report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                          "transformation_ref": "render:report:d936f1a1-dbe8-4193-8bcf-eda6b6461c96",
+                          "author_ref": "oida:structured-reporter",
+                          "kind": "interpretation",
+                          "media_type": "text/plain",
+                          "access": {
+                            "status": "known",
+                            "value": "private"
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "claims": [
+                    {
+                      "claim_ref": "claim:2c8360e2-0ed3-47f6-a967-dc8f4fcd2f1c",
+                      "listening_ref": "listening:08a6983d-034f-4319-8090-186b81e5888d",
+                      "validity": {
+                        "status": "unknown",
+                        "reason": "No validity interval declared"
+                      },
+                      "retention": {
+                        "status": "unknown",
+                        "reason": "Owner retention policy"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "disagreements": []
+        }
+      },
+      "oida.ensemble-execution": {
+        "contract": "oida/ensemble-execution/v1",
+        "payload": {
+          "plan": {
+            "contract": "akouo/orchestration-plan/v0.1",
+            "nodes": [
+              {
+                "id": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+                "depends_on": [],
+                "permission": "granted"
+              },
+              {
+                "id": "influence-target:fixture",
+                "depends_on": [],
+                "permission": "granted"
+              }
+            ],
+            "order": [
+              "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+              "influence-target:fixture"
+            ],
+            "dissolution_rule": "Stop after the selected retained inputs",
+            "execution": "not_requested"
+          },
+          "receipts": [
+            {
+              "pass_id": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+              "status": "complete",
+              "dependency_refs": []
+            },
+            {
+              "pass_id": "influence-target:fixture",
+              "status": "complete",
+              "dependency_refs": []
+            }
+          ],
+          "permission_refs": {
+            "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d": "fixture-owner",
+            "influence-target:fixture": "fixture-owner"
+          },
+          "terminated": true
+        }
+      }
+    },
+    "lineage": {
+      "parent_akousma_ids": [
+        "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+        "influence-target:fixture"
+      ]
+    },
+    "tags": [],
+    "annotations": {},
+    "summary": "Retained influenced ensemble",
+    "auditum": {
+      "contract": "earworm/auditum/v3",
+      "listenings": [
+        {
+          "listening_id": "listening:fb9305ef-0fd8-4128-8783-4896b1da82a2",
+          "listener_id": "oida:structured-reporter",
+          "listener_type": "agent",
+          "created_at": "2026-09-07T15:49:55.772Z",
+          "report_namespace": "oida.agent-report",
+          "contract": "akouo/agent-report/v0.1",
+          "listening_pass_ref": "pass:dff4d96b-1978-4dd2-92e6-bcde9cf09917"
+        },
+        {
+          "listening_id": "aggregate:pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+          "listener_id": "agent:fixture",
+          "listener_type": "agent",
+          "created_at": "2026-09-07T15:49:55.431Z",
+          "report_namespace": "retained:ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+          "contract": "akouo/retained-listening/v0.1",
+          "route": [
+            "memory-lineage-listening"
+          ],
+          "listening_pass_ref": "pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+          "route_decision_refs": [],
+          "influenced_by": []
+        },
+        {
+          "listening_id": "aggregate:pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+          "listener_id": "human:fixture",
+          "listener_type": "human",
+          "created_at": "2026-09-07T15:49:55.437Z",
+          "report_namespace": "retained:influence-target:fixture",
+          "contract": "akouo/retained-listening/v0.1",
+          "route": [
+            "memory-lineage-listening"
+          ],
+          "listening_pass_ref": "pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+          "route_decision_refs": [],
+          "influenced_by": [
+            {
+              "listening_id": "aggregate:pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+              "effect": "Recorded inference decision changed from abstain to proceed"
+            }
+          ]
+        }
+      ],
+      "route_decisions": [
+        {
+          "decision_id": "decision:8a1d4d21-5dca-4aaa-b4be-b218d93c1d1d",
+          "gate": "inference",
+          "outcome": "proceed",
+          "subject": "retained-ensemble:7b9aac5e-4078-48a9-8965-e448c90bfc8c",
+          "reason": "Bounded local report construction; no action authority",
+          "decided_at": "2026-09-07T15:49:55.772Z",
+          "listening_id": "listening:fb9305ef-0fd8-4128-8783-4896b1da82a2",
+          "producer_contract": "akouo/agent-report/v0.1",
+          "authority": {
+            "mode": "observe_only",
+            "actor": "oida:structured-reporter",
+            "requires_confirmation": true,
+            "reversible": true
+          }
+        }
+      ],
+      "actions": [],
+      "disagreements": [],
+      "honest_absences": [
+        {
+          "id": "absence:cc60b3d9-52f7-409d-88b0-00bbd3a98cc1",
+          "kind": "not_retained",
+          "subject": "raw audio",
+          "attributed_to": "owner retention boundary",
+          "listening_id": "listening:fb9305ef-0fd8-4128-8783-4896b1da82a2",
+          "count": 1,
+          "note": "No raw audio asset is retained in this account"
+        }
+      ],
+      "ensemble": {
+        "id": "ensemble:7b3f1b67-a16f-4b29-99b0-12ceb39e9ff4",
+        "kind": "ear_swarm",
+        "listening_ids": [
+          "aggregate:pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+          "aggregate:pass:3fbc6a53-fd6d-462b-953f-7f68326006e9"
+        ],
+        "influence_edges": [
+          {
+            "from_listening_id": "aggregate:pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+            "to_listening_id": "aggregate:pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+            "effect": "Recorded inference decision changed from abstain to proceed"
+          }
+        ],
+        "permissions_preserved": true,
+        "disagreements_preserved": true,
+        "dissolution_rule": "Stop after these retained inputs; no new listening or inferred influence"
+      }
+    },
+    "extensions": {
+      "earworm_listening_access": {
+        "contract": "earworm/listening-access/v1",
+        "declaration_id": "access:6c7a8ff6-a854-4e46-ac58-aec588720349",
+        "subject_ref": "retained-ensemble:7b9aac5e-4078-48a9-8965-e448c90bfc8c",
+        "capture": {
+          "status": "unknown",
+          "reason": "Retained records only"
+        },
+        "sampled_representation": {
+          "status": "unknown",
+          "reason": "No audio source opened"
+        },
+        "model_input": {
+          "status": "not_applicable",
+          "reason": "Textual retained-record reasoning; no audio model input"
+        },
+        "human_access": [
+          {
+            "status": "unknown",
+            "reason": "Text rendering is not human audio access"
+          }
+        ]
+      },
+      "earworm_listening_context": {
+        "contract": "earworm/listening-context/v1",
+        "contexts": [
+          {
+            "listening_ref": "listening:fb9305ef-0fd8-4128-8783-4896b1da82a2",
+            "subject_ref": "retained-ensemble:7b9aac5e-4078-48a9-8965-e448c90bfc8c",
+            "recipients": [
+              {
+                "id": "oida:owner",
+                "type": "human"
+              }
+            ],
+            "access_declaration_ref": "access:6c7a8ff6-a854-4e46-ac58-aec588720349",
+            "report": {
+              "ref": "report:d696ea7f-ea8d-4aad-9820-426e531ec112",
+              "contract": "akouo/agent-report/v0.1",
+              "format": "structured",
+              "readability": {
+                "status": "known",
+                "value": "machine_readable"
+              },
+              "human_rendering": {
+                "status": "available",
+                "rendering_refs": [
+                  "rendering:1994c37c-404d-431a-be75-19fc08223726"
+                ]
+              }
+            },
+            "renderings": [
+              {
+                "rendering_id": "rendering:1994c37c-404d-431a-be75-19fc08223726",
+                "source_ref": "report:d696ea7f-ea8d-4aad-9820-426e531ec112",
+                "output_ref": "text:report:d696ea7f-ea8d-4aad-9820-426e531ec112",
+                "transformation_ref": "render:report:d696ea7f-ea8d-4aad-9820-426e531ec112",
+                "author_ref": "oida:structured-reporter",
+                "kind": "interpretation",
+                "media_type": "text/plain",
+                "access": {
+                  "status": "known",
+                  "value": "private"
+                }
+              }
+            ]
+          },
+          {
+            "listening_ref": "aggregate:pass:8d32acd8-1ef9-4851-a43b-1c00a76f0983",
+            "subject_ref": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+            "recipients": [
+              {
+                "id": "oida:owner",
+                "type": "human"
+              }
+            ],
+            "access_declaration_ref": "access:f367fef1-d85e-4dde-bccc-a17e525d4879",
+            "report": {
+              "ref": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+              "contract": "akouo/retained-listening/v0.1",
+              "format": "structured",
+              "readability": {
+                "status": "known",
+                "value": "machine_readable"
+              },
+              "human_rendering": {
+                "status": "none",
+                "reason": "Original rendering declarations remain in the source snapshot."
+              }
+            },
+            "renderings": []
+          },
+          {
+            "listening_ref": "aggregate:pass:3fbc6a53-fd6d-462b-953f-7f68326006e9",
+            "subject_ref": "influence-target:fixture",
+            "recipients": [
+              {
+                "id": "oida:owner",
+                "type": "human"
+              }
+            ],
+            "access_declaration_ref": "access:8ac8197c-c94c-44e3-bb5a-432619372f45",
+            "report": {
+              "ref": "influence-target:fixture",
+              "contract": "akouo/retained-listening/v0.1",
+              "format": "structured",
+              "readability": {
+                "status": "known",
+                "value": "machine_readable"
+              },
+              "human_rendering": {
+                "status": "none",
+                "reason": "Original rendering declarations remain in the source snapshot."
+              }
+            },
+            "renderings": []
+          }
+        ],
+        "claims": [],
+        "access_declarations": [
+          {
+            "contract": "earworm/listening-access/v1",
+            "declaration_id": "access:f367fef1-d85e-4dde-bccc-a17e525d4879",
+            "subject_ref": "ak:bc8e0079-da9a-4235-8cd6-a6b0f70c748d",
+            "capture": {
+              "status": "unknown",
+              "reason": "Retained records only"
+            },
+            "sampled_representation": {
+              "status": "unknown",
+              "reason": "No audio source opened"
+            },
+            "model_input": {
+              "status": "not_applicable",
+              "reason": "Textual retained-record reasoning; no audio model input"
+            },
+            "human_access": [
+              {
+                "status": "unknown",
+                "reason": "Text rendering is not human audio access"
+              }
+            ]
+          },
+          {
+            "contract": "earworm/listening-access/v1",
+            "declaration_id": "access:8ac8197c-c94c-44e3-bb5a-432619372f45",
+            "subject_ref": "influence-target:fixture",
+            "capture": {
+              "status": "unknown",
+              "reason": "Retained records only"
+            },
+            "sampled_representation": {
+              "status": "unknown",
+              "reason": "No audio source opened"
+            },
+            "model_input": {
+              "status": "not_applicable",
+              "reason": "Textual retained-record reasoning; no audio model input"
+            },
+            "human_access": [
+              {
+                "status": "unknown",
+                "reason": "Text rendering is not human audio access"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

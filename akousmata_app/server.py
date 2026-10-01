@@ -8,23 +8,26 @@ GERM handoff links, and a realtime change feed.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
+import os
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Any
 from urllib.parse import urlencode
 
-from contextlib import asynccontextmanager
-
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
+from fastapi import APIRouter, FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from akousmata_app import AKOUSMATA_CONTRACT, __version__, constellations, exports, graph, records, research, similar, watcher, wiki
+from akousmata_app import AKOUSMATA_CONTRACT, __version__, constellations, exports, graph, publication, records, research, similar, watcher, wiki
 from akousmata_app.llm import validate_http_url
 from akousmata_app.paths import open_store, store_root
-from akousmata_app.settings import ensure_human_profile, load as load_settings
+from akousmata_app.request_boundary import RequestBoundary
+from akousmata_app.settings import SettingsPatch, ensure_human_profile, load as load_settings
 from akousmata_app.settings import public_view, save as save_settings, update_human_profile
 
 _PACKAGED_STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -48,6 +51,95 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="akousmata", version=__version__, lifespan=lifespan)
+_REQUEST_BOUNDARY = RequestBoundary.from_env()
+public_router = APIRouter(prefix="/api/public")
+_WORKSPACE_ID = os.getenv("LISTENINGSTACK_WORKSPACE_ID")
+_WORKSPACE_GENERATION = os.getenv("LISTENINGSTACK_WORKSPACE_GENERATION")
+_WORKSPACE_BINDING = hashlib.sha256(
+    json.dumps(
+        ["akousmata", _WORKSPACE_ID, _WORKSPACE_GENERATION, str(store_root().expanduser().resolve())],
+        separators=(",", ":"),
+    ).encode()
+).hexdigest()
+
+
+@app.exception_handler(RequestValidationError)
+async def invalid_request(_request: Request, exc: RequestValidationError):
+    # Do not echo private input fields. Non-finite JSON input also cannot be
+    # serialized by JSONResponse when included in the default error payload.
+    detail = [{key: error[key] for key in ("type", "loc", "msg")} for error in exc.errors()]
+    return JSONResponse(status_code=422, content={"detail": detail})
+
+
+def _owner_open(request, *, timeout):
+    import urllib.request
+
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, *args, **kwargs):
+            return None
+
+    return urllib.request.build_opener(
+        urllib.request.ProxyHandler({}), NoRedirect()
+    ).open(request, timeout=timeout)
+
+
+def _bound_owner_headers(base_url: str, owner: str) -> dict[str, str]:
+    if not _WORKSPACE_ID or not _WORKSPACE_GENERATION:
+        return {}
+    import urllib.request
+
+    try:
+        request = urllib.request.Request(base_url.rstrip("/") + "/owner/identity")
+        with _owner_open(request, timeout=2) as response:
+            raw = response.read(16385)
+        if len(raw) > 16384:
+            raise ValueError("owner identity is too large")
+        identity = json.loads(raw)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"{owner} identity is unavailable") from exc
+    if (
+        not isinstance(identity, dict)
+        or identity.get("contract") != "centaur/owner-identity/v1"
+        or identity.get("owner") != owner
+        or identity.get("workspace_id") != _WORKSPACE_ID
+        or identity.get("generation") != _WORKSPACE_GENERATION
+        or not isinstance(identity.get("binding"), str)
+    ):
+        raise HTTPException(status_code=409, detail=f"{owner} workspace binding does not match Akousmata")
+    return {
+        "X-Centaur-Workspace": _WORKSPACE_ID,
+        "X-Centaur-Generation": _WORKSPACE_GENERATION,
+        "X-Centaur-Binding": identity["binding"],
+    }
+
+
+@app.middleware("http")
+async def workspace_admission(request: Request, call_next):
+    rejection = _REQUEST_BOUNDARY.reject(request)
+    if rejection is not None:
+        return rejection
+    if _WORKSPACE_ID and _WORKSPACE_GENERATION and request.method.upper() not in {"GET", "HEAD", "OPTIONS"}:
+        supplied = (
+            request.headers.get("x-centaur-workspace"),
+            request.headers.get("x-centaur-generation"),
+            request.headers.get("x-centaur-binding"),
+        )
+        if supplied != (_WORKSPACE_ID, _WORKSPACE_GENERATION, _WORKSPACE_BINDING):
+            return JSONResponse(status_code=409, content={"detail": "akousmata refused a stale or mismatched workspace binding"})
+    return await call_next(request)
+
+
+@app.get("/owner/identity")
+def owner_identity() -> dict[str, Any]:
+    return {
+        "contract": "centaur/owner-identity/v1",
+        "owner": "akousmata",
+        "mode": "workspace" if _WORKSPACE_ID and _WORKSPACE_GENERATION else "legacy",
+        "workspace_id": _WORKSPACE_ID,
+        "generation": _WORKSPACE_GENERATION,
+        "binding": _WORKSPACE_BINDING,
+        "pid": os.getpid(),
+    }
 
 
 class ManualMemory(BaseModel):
@@ -118,14 +210,6 @@ class ResearchBody(BaseModel):
     max_steps: int = 4
 
 
-class SettingsPatch(BaseModel):
-    germ_url: str | None = None
-    oida_url: str | None = None
-    llm: dict[str, Any] | None = None
-    watcher: dict[str, Any] | None = None
-    human_profile: dict[str, Any] | None = None
-
-
 def _store():
     try:
         return open_store()
@@ -150,6 +234,88 @@ def health() -> dict[str, Any]:
             "store_path": str(store_root()),
             **info,
         }
+    finally:
+        store.close()
+
+
+@public_router.get("/status")
+def public_status(response: Response, tag: str | None = None, text: str | None = None) -> dict[str, Any]:
+    response.headers["Cache-Control"] = "no-store"
+    store = _store()
+    try:
+        return publication.public_counts(store, tag=tag, text=text)
+    finally:
+        store.close()
+
+
+@public_router.get("/records")
+def public_records(response: Response, limit: int = Query(default=50, ge=1, le=200),
+                   cursor: str | None = None, tag: str | None = None, text: str | None = None) -> dict[str, Any]:
+    response.headers["Cache-Control"] = "no-store"
+    store = _store()
+    try:
+        try:
+            return publication.public_page(store, limit=limit, cursor=cursor, tag=tag, text=text)
+        except publication.ViewChanged as exc:
+            raise HTTPException(status_code=409, detail=str(exc), headers={"Cache-Control": "no-store"}) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc), headers={"Cache-Control": "no-store"}) from exc
+    finally:
+        store.close()
+
+
+@public_router.get("/records/{akousma_id}")
+def public_record(akousma_id: str, response: Response) -> dict[str, Any]:
+    response.headers["Cache-Control"] = "no-store"
+    store = _store()
+    try:
+        result = publication.public_record(store, akousma_id)
+        if result is None:
+            raise HTTPException(status_code=404, detail="record not available", headers={"Cache-Control": "no-store"})
+        return {"record": result}
+    finally:
+        store.close()
+
+
+app.include_router(public_router)
+
+
+class PublicationBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    fields: list[str]
+
+
+@app.get("/api/records/{akousma_id}/publication")
+def publication_status(akousma_id: str) -> dict[str, Any]:
+    store = _store()
+    try:
+        if store.get(akousma_id) is None:
+            raise HTTPException(status_code=404, detail="record not found")
+        return publication.grant_status(store, akousma_id)
+    finally:
+        store.close()
+
+
+@app.post("/api/records/{akousma_id}/publication")
+def grant_publication(akousma_id: str, body: PublicationBody) -> dict[str, Any]:
+    store = _store()
+    try:
+        try:
+            return publication.grant(store, akousma_id, body.fields)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="record not found") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    finally:
+        store.close()
+
+
+@app.delete("/api/records/{akousma_id}/publication")
+def revoke_publication(akousma_id: str) -> dict[str, Any]:
+    store = _store()
+    try:
+        publication.revoke(store, akousma_id)
+        return {"state": "revoked"}
     finally:
         store.close()
 
@@ -191,6 +357,9 @@ def list_records(
     record_class: str | None = None,
     revision_of: str | None = None,
     limit: int = 200,
+    subject: str | None = None, recipient: str | None = None,
+    human_access: str | None = None, register: str | None = None, scale: str | None = None,
+    offset: int = Query(0, ge=0), oldest_first: bool = False,
 ) -> dict[str, Any]:
     store = _store()
     try:
@@ -211,8 +380,10 @@ def list_records(
                 has_stop_decision=stop_decision,
                 listener_type=listener_type,
                 record_class_filter=record_class,
+                facets={k:v for k,v in dict(subject=subject,recipient=recipient,human_access=human_access,register=register,scale=scale).items() if v is not None},
                 revision_of=revision_of,
                 limit=max(1, min(limit, 1000)),
+                offset=offset, oldest_first=oldest_first,
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -330,6 +501,22 @@ async def import_record(
     if len(data) > records.MAX_MANUAL_AUDIO_BYTES:
         raise HTTPException(status_code=413, detail="uploaded audio is larger than 100 MB")
     return _create_manual_record(body, audio_data=data, audio_extension=extension)
+
+
+@app.get("/api/records/{akousma_id}/listening-relations")
+def listening_relations(akousma_id: str, limit: int = 50, cursor: str | None = None):
+    from akousmata_app.listening_relations import page, ViewChanged
+    store = _store()
+    try:
+        return page(store, akousma_id, limit=limit, cursor=cursor)
+    except KeyError as exc:
+        raise HTTPException(404, 'Unknown retained record') from exc
+    except ViewChanged as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    finally:
+        store.close()
 
 
 @app.get("/api/records/{akousma_id}")
@@ -453,12 +640,42 @@ def forget(akousma_id: str, body: ForgetBody) -> dict[str, Any]:
         )
         if receipt is None:
             raise HTTPException(status_code=404, detail=f"akousma not found: {akousma_id}")
+        from akousmata_app.derivatives import reconcile_derivatives
+        reconcile_derivatives(store)
         wiki.log_append(
             "forget",
             akousma_id,
             f"record removed with receipt {receipt['receipt_id']}; inbound edges remain as absence",
         )
         return {"forgotten": akousma_id, "receipt": receipt}
+    finally:
+        store.close()
+
+
+@app.get("/api/records/{akousma_id}/derivatives")
+def derivatives_list(akousma_id: str):
+    from akousmata_app.derivatives import list_derivatives
+    store = _store()
+    try:
+        return list_derivatives(store, akousma_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    finally:
+        store.close()
+
+
+@app.get("/api/records/{akousma_id}/derivatives/{view_id}")
+def derivative_download(akousma_id: str, view_id: str):
+    from fastapi.responses import Response
+    from akousmata_app.derivatives import read_derivative
+    store = _store()
+    try:
+        return Response(read_derivative(store, akousma_id, view_id),
+                        media_type="application/x-npy",
+                        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
+                                 "Content-Disposition": 'attachment; filename="derivative.npy"'})
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=404, detail="Derivative unavailable") from exc
     finally:
         store.close()
 
@@ -608,7 +825,7 @@ def start_research(body: ResearchBody) -> dict[str, Any]:
 
 @app.get("/api/research")
 def research_sessions() -> dict[str, Any]:
-    return {"sessions": research.list_sessions()}
+    return {"sessions": research.list_sessions(), "proposals": _proposal_call("list_requests")}
 
 
 @app.get("/api/research/{session_id}/events")
@@ -845,6 +1062,8 @@ def set_consent(akousma_id: str, body: ConsentBody) -> dict[str, Any]:
     try:
         try:
             record = records.set_consent(store, akousma_id, body.consent_status, body.rights_note)
+            from akousmata_app.derivatives import revoke_derivatives
+            revoke_derivatives(store, akousma_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
@@ -856,12 +1075,15 @@ def set_consent(akousma_id: str, body: ConsentBody) -> dict[str, Any]:
 
 
 class ExportBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     name: str
     akousma_ids: list[str] = Field(default_factory=list)
     constellation_id: str | None = None
     tag: str | None = None
     include_audio: bool = True
     include_wiki: bool = True
+    audience: str = "selection"
+    fields: list[str] = Field(default_factory=lambda: list(exports.DEFAULT_EXPORT_FIELDS))
 
 
 @app.post("/api/export")
@@ -878,13 +1100,14 @@ def export_pack(body: ExportBody) -> dict[str, Any]:
             ids.extend(record["akousma_id"] for record in store.query(tag=body.tag, limit=1000))
         if not ids:
             raise HTTPException(status_code=400, detail="nothing selected: pass akousma_ids, a constellation_id, or a tag")
-        result = exports.build_pack(
-            store,
-            name=body.name,
-            akousma_ids=ids,
-            include_audio=body.include_audio,
-            include_wiki=body.include_wiki,
-        )
+        try:
+            result = exports.build_pack(
+                store, name=body.name, akousma_ids=ids,
+                include_audio=body.include_audio, include_wiki=body.include_wiki,
+                audience=body.audience, fields=body.fields,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         wiki.log_append("export", body.name, f"{result['included']} included, {len(result['excluded'])} blocked")
         return result
     finally:
@@ -926,13 +1149,18 @@ def listen_again(akousma_id: str, body: ListenAgainBody) -> dict[str, Any]:
         request = urllib.request.Request(
             f"{oida_url}/gateway/listen",
             data=_json.dumps({"path": str(path), "route_preset": body.preset, "remember": False}).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", **_bound_owner_headers(oida_url, "oida")},
             method="POST",
         )
         try:
             # validate_http_url() excludes urllib's local-file and custom schemes.
-            with urllib.request.urlopen(request, timeout=240) as response:  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
-                gateway_result = _json.loads(response.read().decode("utf-8"))
+            with _owner_open(request, timeout=240) as response:  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
+                raw = response.read(4 * 1024 * 1024 + 1)
+                if len(raw) > 4 * 1024 * 1024:
+                    raise ValueError("oída response exceeds its size limit")
+                gateway_result = _json.loads(raw)
+                if not isinstance(gateway_result, dict):
+                    raise ValueError("oída response must be an object")
         except Exception as exc:  # noqa: BLE001 — any transport failure reads the same to the user
             raise HTTPException(status_code=502, detail=f"oída did not answer at {oida_url}: {exc}") from exc
 
@@ -1147,21 +1375,14 @@ def get_settings() -> dict[str, Any]:
 def put_settings(body: SettingsPatch) -> dict[str, Any]:
     import os
 
-    patch = {k: v for k, v in body.model_dump().items() if v is not None}
-    profile_patch = patch.pop("human_profile", None)
-    if isinstance(profile_patch, dict):
-        try:
-            update_human_profile(
-                display_name=str(profile_patch.get("display_name") or ""),
-                privacy=str(profile_patch.get("privacy") or "private"),
-            )
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    patch = body.model_dump(exclude_unset=True, exclude_none=True)
     llm = patch.get("llm")
     if isinstance(llm, dict) and str(llm.get("api_key") or "").startswith("•"):
         llm.pop("api_key")  # masked value round-tripped from the UI: keep the stored key
-    saved = save_settings(patch)
-    saved["human_profile"] = ensure_human_profile()
+    try:
+        saved = save_settings(patch, ensure_profile=True)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     watcher_settings = saved.get("watcher") or {}
     if os.getenv("AKOUSMATA_WATCHER", "1") != "0" and watcher_settings.get("enabled", True):
         watcher.restart(
@@ -1181,7 +1402,163 @@ def main() -> None:
 
     import uvicorn
 
-    uvicorn.run(app, host=os.getenv("AKOUSMATA_HOST", "127.0.0.1"), port=int(os.getenv("AKOUSMATA_PORT", "5180")))
+    host = os.getenv("AKOUSMATA_HOST", "127.0.0.1")
+    _REQUEST_BOUNDARY.validate_bind(host)
+    uvicorn.run(app, host=host, port=int(os.getenv("AKOUSMATA_PORT", "5180")), proxy_headers=False)
+
+
+@app.get("/api/records/{akousma_id}/relations/indexed")
+def indexed_relations(akousma_id: str, limit: int = 50, cursor: str | None = None, rel_type: str | None = None):
+    from akousmata_app.relation_index import page
+    store = _store()
+    try:
+        return page(store, akousma_id, limit=limit, cursor=cursor, rel_type=rel_type)
+    except RuntimeError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    finally:
+        store.close()
+
+
+@app.post("/api/research/proposals")
+def submit_research_proposal(body: dict[str, Any]):
+    return _proposal_call("submit", body)
+
+
+def _proposal_call(operation, *args, **kwargs):
+    store = _store()
+    try:
+        return getattr(research.proposals, operation)(store, *args, **kwargs)
+    except ImportError as exc:
+        raise HTTPException(503, "Install the compatible local AKOUO record workflow package") from exc
+    except RuntimeError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except (ValueError, TypeError, KeyError) as exc:
+        raise HTTPException(400, str(exc)) from exc
+    finally:
+        store.close()
+
+
+@app.post("/api/research/requests/{request_id}/cancel")
+def cancel_research_proposal(request_id: str):
+    return _proposal_call("cancel", request_id)
+
+
+@app.post("/api/research/proposals/{proposal_ref}/reviews")
+def review_research_proposal(proposal_ref: str, body: dict[str, Any]):
+    return _proposal_call("review", proposal_ref, body)
+
+
+@app.get("/api/research/proposals/{proposal_ref}/events")
+def proposal_review_events(proposal_ref: str, after: int = 0, limit: int = 100):
+    items = _proposal_call("events", proposal_ref, after, limit)
+    async def stream():
+        for item in items:
+            yield f"id: {item['event_id']}\ndata: {json.dumps(item)}\n\n"
+        yield f"data: {json.dumps({'kind': 'end', 'next_after': items[-1]['event_id'] if items else after})}\n\n"
+    return StreamingResponse(stream(), media_type="text/event-stream")
+
+
+@app.post("/api/research/changes/{record_id}")
+def research_record_changed(record_id: str):
+    return _proposal_call("changed", record_id)
+
+
+@app.get("/api/research/reconcile")
+def reconcile_research(limit: int = 32, after: str = ""):
+    return _proposal_call("reconcile", limit, after)
+
+
+@app.post("/api/research/changes/{record_id}/acknowledge")
+def acknowledge_research(record_id: str, body: dict[str, Any]):
+    return _proposal_call("acknowledge", record_id, body.get("sha256"))
+
+
+@app.get("/api/facets")
+def library_facets():
+    from akousmata_app.access_view import options
+    store = _store()
+    try:
+        return {"facets": options(store), "value_limit": 200, "scope": "owner library"}
+    finally:
+        store.close()
+
+
+def _graph_history_call(operation, *args, **kwargs):
+    from akousmata_app import graph_history
+    store = _store()
+    try:
+        return getattr(graph_history, operation)(store, *args, **kwargs)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    finally:
+        store.close()
+
+
+@app.post("/api/graph/snapshots")
+def capture_graph(body: dict[str, Any]):
+    return _graph_history_call("capture", focus=body.get("focus"), depth=body.get("depth", 2), limit=body.get("limit", 120))
+
+
+@app.get("/api/graph/snapshots")
+def graph_events(after: int = 0, limit: int = 50):
+    return _graph_history_call("events", after=after, limit=limit)
+
+
+@app.get("/api/graph/snapshots/{event_id}")
+def replay_graph(event_id: int):
+    return _graph_history_call("replay", event_id)
+
+
+@app.post("/api/bundles/export")
+def bundle_export(body: dict[str, Any]):
+    from akousmata_app.bundles import export_bundle
+    try:
+        with open_store() as store:
+            return export_bundle(store, body["record_ids"], disclosure=body.get("disclosure", "private"))
+    except (ValueError, KeyError, TypeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/bundles/import")
+def bundle_import(body: dict[str, Any]):
+    from akousmata_app.bundles import import_bundle, MAX_BYTES
+    import base64
+    try:
+        if set(body) != {"archive_base64", "supported_contracts"} or len(body["archive_base64"]) > MAX_BYTES * 4 // 3 + 4:
+            raise ValueError("Expected bounded archive_base64 and supported_contracts")
+        data = base64.b64decode(body["archive_base64"], validate=True)
+        with open_store() as store:
+            return import_bundle(store, data, supported_contracts=body["supported_contracts"])
+    except (ValueError, KeyError, TypeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/score")
+def score_projection(body: dict[str, Any]):
+    from akousmata_app.score import project
+    try:
+        with open_store() as store:
+            return project(store, event_id=body["event_id"], scales=body["scales"], resolution_ms=body.get("resolution_ms", 1000))
+    except (ValueError, KeyError, TypeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.get("/api/capabilities")
+def model_ecology_capabilities():
+    from akousmata_app.acoustic.api import service
+    return dict(contract="listening-stack/capability-catalog/v1", owner="akousmata",
+        deployments=service().runtime.registry.catalog(), legacy_models=[],
+        embedding_policy="Same pinned model revision, preprocessing, pooling, dimensions and metric required; legacy vectors retained but excluded from cosine")
+
+
+from akousmata_app.acoustic.api import router as acoustic_router
+app.include_router(acoustic_router)
 
 
 if __name__ == "__main__":

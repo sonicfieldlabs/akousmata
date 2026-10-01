@@ -12,7 +12,10 @@ from __future__ import annotations
 import json
 import math
 import re
+import threading
 from typing import Any
+
+from akousma.model_ecology import embedding as validated_embedding
 
 from akousmata_app.records import card, summary_line
 
@@ -52,7 +55,7 @@ def _features(record: dict[str, Any]) -> dict[str, float]:
     return found
 
 
-def _embedding(record: dict[str, Any]) -> list[float] | None:
+def _embedding(record: dict[str, Any]) -> tuple[str, list[float]] | None:
     """Find an already-computed local embedding without generating one."""
     candidates: list[Any] = []
     app_extension = (record.get("extensions") or {}).get("akousmata.app") or {}
@@ -65,34 +68,39 @@ def _embedding(record: dict[str, Any]) -> list[float] | None:
         if isinstance(payload, dict):
             candidates.extend([payload.get("embedding"), payload.get("embedding_vector")])
     for candidate in candidates:
-        if (
-            isinstance(candidate, list)
-            and len(candidate) >= 2
-            and all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in candidate)
-        ):
-            return [float(value) for value in candidate]
+        parsed = validated_embedding(candidate)
+        if parsed is not None:
+            return parsed
     return None
 
 
-def _embedding_cosine(left: list[float], right: list[float]) -> float | None:
-    if len(left) != len(right):
+def _embedding_cosine(left, right) -> float | None:
+    if left[0] != right[0]:
         return None
-    left_norm = math.sqrt(sum(value * value for value in left))
-    right_norm = math.sqrt(sum(value * value for value in right))
-    if left_norm <= 1e-12 or right_norm <= 1e-12:
+    a, b = left[1], right[1]
+    # Normalize before multiplying to avoid overflow on finite large vectors.
+    an, bn = math.hypot(*a), math.hypot(*b)
+    if not math.isfinite(an) or not math.isfinite(bn) or an <= 1e-12 or bn <= 1e-12:
         return None
-    return sum(a * b for a, b in zip(left, right)) / (left_norm * right_norm)
+    return max(-1.0, min(1.0, sum((x / an) * (y / bn) for x, y in zip(a, b))))
 
 
+_CORPUS_LOCK = threading.RLock()
 _CORPUS_CACHE: dict[str, Any] = {"key": None, "items": []}
 
 
 def _corpus(store) -> list[dict[str, Any]]:
+    with _CORPUS_LOCK:
+        return _cached_corpus(store)
+
+
+def _cached_corpus(store) -> list[dict[str, Any]]:
     """Parsed records with precomputed tokens/features/embeddings, cached per
-    process. The key changes on any write: INSERT OR REPLACE assigns a fresh
-    rowid and forget() changes the count, so edits invalidate it too."""
+    process. Connection identity prevents cross-store reuse; total_changes and
+    data_version invalidate local and external writes, including in-place updates."""
     row = store.conn.execute("SELECT COUNT(*) AS n, MAX(rowid) AS r FROM akousmata").fetchone()
-    key = (row["n"], row["r"])
+    key = (store.conn, store.conn.total_changes,
+           store.conn.execute("PRAGMA data_version").fetchone()[0], row["n"], row["r"])
     if _CORPUS_CACHE["key"] != key:
         items = []
         for db_row in store.conn.execute("SELECT record FROM akousmata").fetchall():
@@ -170,7 +178,7 @@ def similar(store, akousma_id: str, *, limit: int = 10) -> list[dict[str, Any]]:
             cosine = _embedding_cosine(origin_embedding, embedding)
             if cosine is not None and cosine > 0.2:
                 score += 0.6 * max(0.0, cosine)
-                basis.append(f"local embedding cosine {cosine:.3f} ({len(embedding)} dimensions)")
+                basis.append(f"local embedding cosine {cosine:.3f} ({len(embedding[1])} dimensions)")
 
         if score > 0.05 and basis:
             scored.append({"card": card(record), "score": round(min(score, 1.0), 3), "basis": basis})

@@ -72,10 +72,23 @@ def ensure_pyakousma() -> None:
 def open_store(root: str | Path | None = None):
     ensure_pyakousma()
     try:
-        import akousma
+        import akousma  # noqa: F401 -- fail with the actionable installation message below
     except ModuleNotFoundError as exc:
         raise RuntimeError(
             "the 'akousma' package is required: pip install -e <SFL>/earworm/packages/py-akousma "
             "(or set AKOUSMATA_PYAKOUSMA_PATH)"
         ) from exc
-    return akousma.AkousmataStore(root or store_root())
+    from akousmata_app.spectral_store import SpectralStore
+    store = SpectralStore(root or store_root())
+    from akousmata_app.relation_index import ensure
+    try:
+        if (Path(store.root) / '.spectral-transactions').exists():
+            from akousmata_app.derivatives import recover_derivatives
+            recover_derivatives(store)
+        ensure(store)
+        from akousmata_app.research_proposals import ensure as ensure_research
+        ensure_research(store)
+    except Exception:
+        store.close()
+        raise
+    return store
