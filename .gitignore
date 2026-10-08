@@ -6,6 +6,10 @@ acoustic.sqlite3-*
 objects/
 wiki/
 settings.json
+/.settings.lock
+/.settings-*.tmp
+/.spectral-transactions/
+/bundle-receipts/
 exports/
 constellations.json
 watcher-state.json

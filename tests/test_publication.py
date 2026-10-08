@@ -21,7 +21,7 @@ class PublicationTests(unittest.TestCase):
         self.env = patch.dict(os.environ, {"AKOUSMATA_PATH": self.tmp.name, "AKOUSMATA_WATCHER": "0"})
         self.env.start()
         self.store = akousma.AkousmataStore(self.tmp.name)
-        self.client = TestClient(app)
+        self.client = TestClient(app, base_url="http://127.0.0.1", client=("127.0.0.1", 50000))
         self.first = self.add("First public summary", "2026-07-01T12:00:00Z")
         self.second = self.add("Second public summary", "2026-07-02T12:00:00Z")
         self.private = self.add("PRIVATE_SUMMARY", "2026-07-03T12:00:00Z")

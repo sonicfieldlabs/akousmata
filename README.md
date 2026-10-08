@@ -21,7 +21,7 @@ kinship ("belongs with"): variants, recurrences, series, responses. A heard
 memory carries attributable listenings; a gate that closed before hearing can
 instead carry a decision-only auditum without pretending that sound occurred.
 
-Source version: `0.8.1`, an unpublished candidate; the last published release is `v0.7.0`.
+Source version: `0.8.3`, an unpublished local package candidate.
 
 ## What it is
 
@@ -125,7 +125,7 @@ that protocol, not a fork of it.
 
 | Component | Version / contract | Relationship |
 | --- | --- | --- |
-| [Earworm](https://github.com/sonicfieldlabs/earworm) | `akousma >=0.8.3` / spec v1.8 | Canonical store with checked object resolution, no-audio listening accounts, listener-type/class indexes, and additive revision chains. |
+| [Earworm](https://github.com/sonicfieldlabs/earworm) | `akousma >=0.8.4` / spec v1.8 | Canonical store with checked object resolution, no-audio listening accounts, listener-type/class indexes, and additive revision chains. |
 | [AKOÚŌ](https://github.com/sonicfieldlabs/akouo) | `akouo/v0.9` | Owns claim taxonomy, provenance, temporal passes, route decisions, corpus disclosure, and situated context rendered by the navigator. |
 | [OÍDA](https://github.com/sonicfieldlabs/oida) | 0.11.0 / `oida/gateway/v0.6` | Writes typed machine and human listening records, links related accounts, and embeds the navigator at `/library/`. |
 | [GERM](https://github.com/sonicfieldlabs/germ) | 0.3.3 (optional) | Receives explicit sound, prompt, and lineage handoffs when separately configured. |
@@ -143,6 +143,31 @@ Installing Oída installs and mounts this navigator at `/library/`; standalone
 mode remains useful for library-only work. In the Sonic Field monorepo the
 canonical sibling packages are editable. Tests: `uv run pytest -q`.
 
+## Owner access and settings
+
+The owner app defaults to loopback access. It accepts `localhost`, `127.0.0.1`
+and `::1` hosts, rejects foreign origins on mutations, and preserves the
+workspace binding checks. Local command-line clients may omit Origin.
+Forwarded headers are rejected; proxy header interpretation is disabled.
+Mounting the full app retains these owner controls. The separate read-only
+`public_router` serves only approved projections.
+
+Non-loopback startup requires both `AKOUSMATA_ACCESS_TOKEN` (at least 32
+characters) and `AKOUSMATA_ALLOWED_HOSTS` (comma-separated exact hostnames
+without ports). In this mode every owner request requires
+`Authorization: Bearer <token>`, including reads and static assets. This is an
+integration mode for authenticated clients or a TLS gateway that supplies the
+authorization header and strips forwarded headers; the standalone UI does not
+manage tokens. An unauthenticated non-loopback bind is refused.
+
+Settings patches are typed and validated before saving. Watcher intervals must
+be finite: ingestion accepts 0.1 to 86,400 seconds and lint accepts 0.01 to
+1,440 minutes. Saves preserve omitted fields, serialize concurrent writers,
+and atomically replace `settings.json` with owner-only POSIX permissions.
+Malformed existing fields fall back to defaults without discarding other valid
+fields. Masked provider keys returned by the UI preserve the stored key when
+round-tripped; a local OpenAI-compatible provider can operate without an API key.
+
 ## The stack around it
 
 - **oída** listens and remembers (and embeds this library view as its
@@ -153,11 +178,12 @@ canonical sibling packages are editable. Tests: `uv run pytest -q`.
 
 ## What does not exist yet
 
-- **A published 0.8.1.** This checkout's 0.8.1 is an unpublished candidate, and its commits are not
-  pushed. The last published release is `v0.7.0`.
-- **Authentication, or more than one owner.** The navigator has neither: it serves one owner on
-  this machine, and mounting its full app exposes the owner routes. Only `public_router` is meant
-  for another host, and it has three read-only `/api/public` routes
+- **A coordinated new package release.** The 0.8.3 package candidate and its
+  repaired owner dependencies are prepared locally. A public release is separate.
+- **Multiple owners or account management.** The navigator serves one owner.
+  Optional bearer admission authenticates access to that owner's full app.
+  Only `public_router` is meant for publishing selected projections on another
+  host, and it has three read-only `/api/public` routes
   ([public projections](docs/public-projections.md)).
 - **A listening model or an agent.** It runs neither. The one model it can use, CLAP for acoustic
   retrieval, is optional and runs in a separate offline process. Without it, memory and every other

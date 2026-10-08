@@ -21,7 +21,7 @@ def library(tmp_path, monkeypatch):
     store = AkousmataStore(tmp_path)
     for source in fixture["sources"]:
         store.put(source)
-    with TestClient(app) as client:
+    with TestClient(app, base_url="http://127.0.0.1", client=("127.0.0.1", 50000)) as client:
         yield store, client, fixture
     store.close()
 

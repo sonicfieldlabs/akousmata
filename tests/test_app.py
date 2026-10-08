@@ -35,8 +35,9 @@ except ModuleNotFoundError:
 class NavigatorTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        os.environ["AKOUSMATA_PATH"] = self.tmp.name
-        os.environ["AKOUSMATA_WATCHER"] = "0"
+        self.env = patch.dict(os.environ, {"AKOUSMATA_PATH": self.tmp.name, "AKOUSMATA_WATCHER": "0"})
+        self.env.start()
+        self.addCleanup(self.env.stop)
         store = akousma.AkousmataStore(self.tmp.name)
         parent = akousma.new_akousma(
             audio={"asset_id": "cap_1"},
@@ -66,11 +67,9 @@ class NavigatorTests(unittest.TestCase):
         self.child_id = child["akousma_id"]
 
         from akousmata_app.server import app
-        self.client = TestClient(app)
+        self.client = TestClient(app, base_url="http://127.0.0.1", client=("127.0.0.1", 50000))
 
     def tearDown(self):
-        os.environ.pop("AKOUSMATA_PATH", None)
-        os.environ.pop("AKOUSMATA_WATCHER", None)
         self.tmp.cleanup()
 
     def _manual_with_audio(self, summary="rain on the skylight", tags=("rain",)):

@@ -18,6 +18,7 @@ from typing import Annotated, Any
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -25,7 +26,8 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from akousmata_app import AKOUSMATA_CONTRACT, __version__, constellations, exports, graph, publication, records, research, similar, watcher, wiki
 from akousmata_app.llm import validate_http_url
 from akousmata_app.paths import open_store, store_root
-from akousmata_app.settings import ensure_human_profile, load as load_settings
+from akousmata_app.request_boundary import RequestBoundary
+from akousmata_app.settings import SettingsPatch, ensure_human_profile, load as load_settings
 from akousmata_app.settings import public_view, save as save_settings, update_human_profile
 
 _PACKAGED_STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -49,6 +51,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="akousmata", version=__version__, lifespan=lifespan)
+_REQUEST_BOUNDARY = RequestBoundary.from_env()
 public_router = APIRouter(prefix="/api/public")
 _WORKSPACE_ID = os.getenv("LISTENINGSTACK_WORKSPACE_ID")
 _WORKSPACE_GENERATION = os.getenv("LISTENINGSTACK_WORKSPACE_GENERATION")
@@ -58,6 +61,14 @@ _WORKSPACE_BINDING = hashlib.sha256(
         separators=(",", ":"),
     ).encode()
 ).hexdigest()
+
+
+@app.exception_handler(RequestValidationError)
+async def invalid_request(_request: Request, exc: RequestValidationError):
+    # Do not echo private input fields. Non-finite JSON input also cannot be
+    # serialized by JSONResponse when included in the default error payload.
+    detail = [{key: error[key] for key in ("type", "loc", "msg")} for error in exc.errors()]
+    return JSONResponse(status_code=422, content={"detail": detail})
 
 
 def _owner_open(request, *, timeout):
@@ -104,6 +115,9 @@ def _bound_owner_headers(base_url: str, owner: str) -> dict[str, str]:
 
 @app.middleware("http")
 async def workspace_admission(request: Request, call_next):
+    rejection = _REQUEST_BOUNDARY.reject(request)
+    if rejection is not None:
+        return rejection
     if _WORKSPACE_ID and _WORKSPACE_GENERATION and request.method.upper() not in {"GET", "HEAD", "OPTIONS"}:
         supplied = (
             request.headers.get("x-centaur-workspace"),
@@ -194,14 +208,6 @@ class ResearchBody(BaseModel):
     seed_ids: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
     max_steps: int = 4
-
-
-class SettingsPatch(BaseModel):
-    germ_url: str | None = None
-    oida_url: str | None = None
-    llm: dict[str, Any] | None = None
-    watcher: dict[str, Any] | None = None
-    human_profile: dict[str, Any] | None = None
 
 
 def _store():
@@ -1369,21 +1375,14 @@ def get_settings() -> dict[str, Any]:
 def put_settings(body: SettingsPatch) -> dict[str, Any]:
     import os
 
-    patch = {k: v for k, v in body.model_dump().items() if v is not None}
-    profile_patch = patch.pop("human_profile", None)
-    if isinstance(profile_patch, dict):
-        try:
-            update_human_profile(
-                display_name=str(profile_patch.get("display_name") or ""),
-                privacy=str(profile_patch.get("privacy") or "private"),
-            )
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    patch = body.model_dump(exclude_unset=True, exclude_none=True)
     llm = patch.get("llm")
     if isinstance(llm, dict) and str(llm.get("api_key") or "").startswith("•"):
         llm.pop("api_key")  # masked value round-tripped from the UI: keep the stored key
-    saved = save_settings(patch)
-    saved["human_profile"] = ensure_human_profile()
+    try:
+        saved = save_settings(patch, ensure_profile=True)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     watcher_settings = saved.get("watcher") or {}
     if os.getenv("AKOUSMATA_WATCHER", "1") != "0" and watcher_settings.get("enabled", True):
         watcher.restart(
@@ -1403,7 +1402,9 @@ def main() -> None:
 
     import uvicorn
 
-    uvicorn.run(app, host=os.getenv("AKOUSMATA_HOST", "127.0.0.1"), port=int(os.getenv("AKOUSMATA_PORT", "5180")))
+    host = os.getenv("AKOUSMATA_HOST", "127.0.0.1")
+    _REQUEST_BOUNDARY.validate_bind(host)
+    uvicorn.run(app, host=host, port=int(os.getenv("AKOUSMATA_PORT", "5180")), proxy_headers=False)
 
 
 @app.get("/api/records/{akousma_id}/relations/indexed")

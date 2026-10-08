@@ -2,7 +2,22 @@
 
 ## Unreleased
 
-- After the 0.8.2 wheel Khipu vendors: private bundle import is restoration,
+- Package 0.8.3 with owner request admission and atomic validated settings.
+- Enforced owner host and mutation-origin admission across the application,
+  preserving workspace binding. Default access requires loopback clients;
+  non-loopback startup requires explicit allowed hosts and bearer authentication.
+  Forwarded authority headers are rejected and Uvicorn proxy interpretation is
+  disabled.
+- Validate settings before applying any part of a patch. Saves now serialize
+  thread/process updates and atomically replace private files; malformed stored
+  fields fall back safely while other valid fields survive. Invalid requests
+  return diagnostics without echoing private input or non-finite values.
+- Report keyless OpenAI-compatible endpoints as configured when a model is set,
+  matching the existing completion adapter's local-provider support.
+- Exclude private transaction directories, bundle receipts and settings staging
+  files from repository-local Git candidates.
+
+- After the bundled 0.8.2 wheel: private bundle import is restoration,
   not publication admission. Unknown consent and expired, future or unknown
   receiving claims stay in the restored record; the receiving store's forgetting
   ledger still refuses; receipts say `admission: private-restoration` and

@@ -100,7 +100,7 @@ def test_walk_three_stages_and_api_errors(library, monkeypatch):
     }
     monkeypatch.setenv("AKOUSMATA_PATH", str(store.root))
     monkeypatch.setenv("AKOUSMATA_WATCHER", "0")
-    with TestClient(app) as client:
+    with TestClient(app, base_url="http://127.0.0.1", client=("127.0.0.1", 50000)) as client:
         assert (
             client.post("/api/graph/snapshots", json={"limit": "wrong"}).status_code
             == 400

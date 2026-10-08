@@ -21,7 +21,7 @@ def library(tmp_path, monkeypatch):
     for key, record in bundle.items():
         if isinstance(record, dict):
             store.put(record)
-    with TestClient(app) as client:
+    with TestClient(app, base_url="http://127.0.0.1", client=("127.0.0.1", 50000)) as client:
         yield store, client, bundle
     store.close()
 

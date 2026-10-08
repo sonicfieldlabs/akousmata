@@ -26,7 +26,7 @@ def library(tmp_path, monkeypatch):
         (Path(__file__).parent / "fixtures/access-observation.json").read_text()
     )
     store.put(observation)
-    with TestClient(app) as client:
+    with TestClient(app, base_url="http://127.0.0.1", client=("127.0.0.1", 50000)) as client:
         yield store, client, observation
     store.close()
 

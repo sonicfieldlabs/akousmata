@@ -8,7 +8,7 @@ def test_workspace_identity_does_not_open_store_and_mutations_are_bound(tmp_path
 from pathlib import Path
 from fastapi.testclient import TestClient
 from akousmata_app.server import app
-with TestClient(app) as client:
+with TestClient(app, base_url="http://127.0.0.1", client=("127.0.0.1", 50000)) as client:
     identity = client.get('/owner/identity').json()
     assert identity['owner'] == 'akousmata' and len(identity['binding']) == 64
     assert not Path(__import__('os').environ['AKOUSMATA_PATH']).exists()
