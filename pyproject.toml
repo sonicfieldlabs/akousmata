@@ -1,12 +1,15 @@
 [project]
 name = "akousmata"
-version = "0.7.0"
+version = "0.8.3"
 description = "The listening navigator: a local-first library app over the shared akousmata store of sonic memories."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 dependencies = [
-    "akousma>=0.7.0",
+    "akousma>=0.8.4",
+    "akouo-contract>=0.10.1",
+    "numpy>=1.26",
+    "soundfile>=0.12",
     "fastapi>=0.139",
     "python-multipart>=0.0.32",
     "uvicorn>=0.29",
@@ -21,7 +24,7 @@ Issues = "https://github.com/sonicfieldlabs/akousmata/issues"
 dev = [
     "pytest>=8",
     "httpx>=0.27",
-    "httpx2>=2.7",
+    "httpx2>=2.12,<3",
     "jsonschema>=4.21",
 ]
 
@@ -29,7 +32,8 @@ dev = [
 akousmata = "akousmata_app.server:main"
 
 [tool.uv.sources]
-akousma = { path = "../earworm/packages/py-akousma", editable = true }
+akouo-contract = { path = "vendor/akouo_contract-0.10.1-py3-none-any.whl" }
+akousma = { path = "vendor/akousma-0.8.4-py3-none-any.whl" }
 
 [build-system]
 requires = ["hatchling"]
@@ -41,5 +45,9 @@ packages = ["akousmata_app"]
 [tool.hatch.build.targets.wheel.force-include]
 "static" = "akousmata_app/static"
 
-# The local monorepo uses the sibling py-akousma checkout; published builds
-# resolve the same canonical package from their package index.
+# Local development and CI use the reviewed wheels in vendor/. Package metadata
+# declares the same minima without requiring sibling editable checkouts.
+
+# Explicit source inputs exclude local reports, plans and operator state.
+[tool.hatch.build.targets.sdist]
+include = ["akousmata_app", "static", "pyproject.toml", "README.md", "LICENSE", "vendor/*.whl", "vendor/SHA256SUMS", "vendor/compatibility.json", "vendor/NOTICE.md"]

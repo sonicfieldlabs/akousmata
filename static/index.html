@@ -56,7 +56,7 @@
           <option value="decision_only">decision only</option>
           <option value="legacy">legacy</option>
         </select>
-        <select id="f-listener" title="exact auditum listener type">
+        <select aria-label="Listener type" id="f-listener" title="exact auditum listener type">
           <option value="">every listener type</option>
           <option value="human">human</option>
           <option value="agent">agent</option>
@@ -69,6 +69,15 @@
           <option value="ensemble">ensemble</option>
           <option value="other">other</option>
         </select>
+        <details class="facet-controls"><summary>Subject, recipients and access</summary>
+          <label>Subject <select id="f-subject"><option value="">every subject</option></select></label>
+          <label>Recipient <select id="f-recipient"><option value="">every recipient</option></select></label>
+          <label>Declared human access <select id="f-human_access"><option value="">every access status</option></select></label>
+          <label>Register <select id="f-register"><option value="">every register</option></select></label>
+          <label>Scale <select id="f-scale"><option value="">every scale</option></select></label>
+          <p class="note">These are retained declarations, not a test of audibility. Up to 200 values per facet.</p>
+          <button type="button" class="btn" id="clear-facets">Clear these facets</button>
+        </details>
         <span id="tag-chips"></span>
         <span id="covenant-chip"></span>
         <span class="spacer" style="flex:1"></span>
@@ -152,6 +161,9 @@
         <button class="btn" id="graph-all">whole library</button>
         <span class="note" id="graph-status"></span>
       </div>
+      <div class="graph-legend"><button class="btn" id="graph-save">capture graph</button><label>Saved capture <select id="graph-history"><option value="">Choose a capture</option></select></label><button class="btn" id="graph-replay">replay capture</button><button class="btn" id="graph-more">more captures</button></div>
+      <p class="note">Stages describe retained records and parent links. They do not prove that an output was heard. Replay shows explicit captures, not every past change.</p>
+      <div id="graph-walk"></div>
       <div id="graph-wrap"><canvas id="graph"></canvas></div>
     </main>
 
