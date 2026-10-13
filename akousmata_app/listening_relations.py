@@ -56,6 +56,8 @@ def _report(record, listening):
 
 def project(record: dict[str, Any], resolve=None):
     """Display declarations and evidence availability, never infer a missing edge."""
+    if record.get("record_kind") == "representation_record":
+        raise ValueError("Representation relations require the versioned navigator and current terms")
     block = record.get("auditum") if isinstance(record.get("auditum"), dict) else {}
     nodes = []
     edges = []

@@ -35,6 +35,8 @@ def claim_clock() -> str:
 
 
 def exportable(record: dict[str, Any]) -> tuple[bool, str]:
+    if record.get("record_kind") == "representation_record":
+        return False, "representation artifacts require the versioned export and current material terms"
     claims = record.get("extensions", {}).get("earworm_listening_context", {}).get("claims", [])
     if claims:
         from akousma.listening_context import claim_validity_at
@@ -65,6 +67,8 @@ def sanitize(record: dict[str, Any], *, include_audio: bool,
     owner-selected packs use the existing consent gate. Raw reports, claims,
     extensions, identities, locations and lineage are not implicitly exported.
     """
+    if record.get("record_kind") == "representation_record":
+        raise ValueError("Representation artifacts require the versioned export and current material terms")
     fields = checked_fields(fields)
     clean = {"projection_contract": PROJECTION_CONTRACT, "akousma_id": record["akousma_id"],
              "created_at": record["created_at"], "source_schema_version": record["schema_version"]}

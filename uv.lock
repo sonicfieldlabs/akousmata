@@ -8,14 +8,14 @@ resolution-markers = [
 
 [[package]]
 name = "akouo-contract"
-version = "0.10.1"
-source = { path = "vendor/akouo_contract-0.10.1-py3-none-any.whl" }
+version = "0.12.0"
+source = { path = "vendor/akouo_contract-0.12.0-py3-none-any.whl" }
 dependencies = [
     { name = "jsonschema" },
     { name = "referencing" },
 ]
 wheels = [
-    { filename = "akouo_contract-0.10.1-py3-none-any.whl", hash = "sha256:ed3ffdfcb02cf794f7303351a6e473259b78eba351efedb4b98645b5622649c2" },
+    { filename = "akouo_contract-0.12.0-py3-none-any.whl", hash = "sha256:82f0ef39dc3ebebe1113b662ef5c129c96b38d5b27946ba1eade19b5785b5369" },
 ]
 
 [package.metadata]
@@ -26,14 +26,14 @@ requires-dist = [
 
 [[package]]
 name = "akousma"
-version = "0.8.4"
-source = { path = "vendor/akousma-0.8.4-py3-none-any.whl" }
+version = "0.10.0"
+source = { path = "vendor/akousma-0.10.0-py3-none-any.whl" }
 dependencies = [
     { name = "jsonschema" },
     { name = "referencing" },
 ]
 wheels = [
-    { filename = "akousma-0.8.4-py3-none-any.whl", hash = "sha256:ed3c2c41dbc20804deae9da7fb9d5797c3074deb0e03a899ce47adb650e34539" },
+    { filename = "akousma-0.10.0-py3-none-any.whl", hash = "sha256:b62406267017de15e0a43489aec570dc58d2602fcb80a46cec0cb00a56bd906d" },
 ]
 
 [package.metadata]
@@ -46,7 +46,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "akousmata"
-version = "0.8.3"
+version = "0.9.0"
 source = { editable = "." }
 dependencies = [
     { name = "akouo-contract" },
@@ -69,8 +69,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "akouo-contract", path = "vendor/akouo_contract-0.10.1-py3-none-any.whl" },
-    { name = "akousma", path = "vendor/akousma-0.8.4-py3-none-any.whl" },
+    { name = "akouo-contract", path = "vendor/akouo_contract-0.12.0-py3-none-any.whl" },
+    { name = "akousma", path = "vendor/akousma-0.10.0-py3-none-any.whl" },
     { name = "fastapi", specifier = ">=0.139" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27" },
     { name = "httpx2", marker = "extra == 'dev'", specifier = ">=2.12,<3" },

@@ -1,5 +1,10 @@
 # akousmata — the listening navigator
 
+The unpublished 0.9.0 source candidate adds a private inscription reader and
+versioned owner APIs for text works, source registries, projections, comparison,
+selected export and prepared returns. Artifacts follow current shared material
+uses. See [Inscriptions and textual works](docs/representations.md).
+
 Centaur workspace launches set an immutable workspace ID and process generation.
 `GET /owner/identity` reads that binding without opening or migrating the store;
 writes require matching workspace, generation and store fingerprint headers. The
@@ -21,7 +26,8 @@ kinship ("belongs with"): variants, recurrences, series, responses. A heard
 memory carries attributable listenings; a gate that closed before hearing can
 instead carry a decision-only auditum without pretending that sound occurred.
 
-Source version: `0.8.3`, an unpublished local package candidate.
+Source version: `0.9.0`, an unpublished local package candidate. The current
+inscription cohort is documented in [the Phase 17 package record](docs/listening-md-phase17.md).
 
 ## What it is
 

@@ -26,6 +26,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from akousmata_app import AKOUSMATA_CONTRACT, __version__, constellations, exports, graph, publication, records, research, similar, watcher, wiki
 from akousmata_app.llm import validate_http_url
 from akousmata_app.paths import open_store, store_root
+from akousmata_app.representations import build_router as representation_router
 from akousmata_app.request_boundary import RequestBoundary
 from akousmata_app.settings import SettingsPatch, ensure_human_profile, load as load_settings
 from akousmata_app.settings import public_view, save as save_settings, update_human_profile
@@ -51,6 +52,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="akousmata", version=__version__, lifespan=lifespan)
+app.include_router(representation_router(open_store))
 _REQUEST_BOUNDARY = RequestBoundary.from_env()
 public_router = APIRouter(prefix="/api/public")
 _WORKSPACE_ID = os.getenv("LISTENINGSTACK_WORKSPACE_ID")
@@ -220,6 +222,11 @@ def _store():
 @app.get("/", response_class=HTMLResponse)
 def index() -> str:
     return (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+
+
+@app.get("/inscriptions", response_class=HTMLResponse)
+def inscriptions() -> str:
+    return (STATIC_DIR / "representations.html").read_text(encoding="utf-8")
 
 
 @app.get("/api/health")

@@ -171,6 +171,7 @@ def cards(store, found: list[dict[str, Any]], *, local_listener_id: str | None =
             local_listener_id=local_listener_id,
         )
         for record in found
+        if record.get("record_kind") != "representation_record"
     ]
 
 
@@ -225,7 +226,7 @@ def list_records(
         from akousmata_app.access_view import find
         if listener_type is not None and listener_type not in _akousma().AUDITUM_LISTENER_TYPES:
             raise ValueError("Unknown listener type")
-        return find(store, facets, locals(), limit)
+        return [record for record in find(store, facets, locals(), limit) if record.get("record_kind") != "representation_record"]
     found = store.query(
         originating_app=app,
         origin=origin,
@@ -237,7 +238,7 @@ def list_records(
         limit=limit,
         **kwargs,
     )
-    return found
+    return [record for record in found if record.get("record_kind") != "representation_record"]
 
 
 def summary_line(record: dict[str, Any]) -> str:
@@ -324,7 +325,7 @@ def card(
 
 def detail(store, akousma_id: str, *, local_listener_id: str | None = None) -> dict[str, Any] | None:
     record = store.get(akousma_id)
-    if record is None:
+    if record is None or record.get("record_kind") == "representation_record":
         return None
     parents = [pid for pid in store.parents(akousma_id)]
     children = [cid for cid in store.children(akousma_id)]
@@ -1000,7 +1001,7 @@ def timeline(store, *, bucket: str = "day") -> dict[str, Any]:
     if bucket not in {*sizes, "season"}:
         raise ValueError("bucket must be day, month, season, or year")
     size = sizes.get(bucket)
-    rows = store.conn.execute("SELECT record FROM akousmata ORDER BY created_at ASC").fetchall()
+    rows = store.conn.execute("SELECT record FROM akousmata WHERE coalesce(json_extract(record,'$.record_kind'),'') <> 'representation_record' ORDER BY created_at ASC").fetchall()
     buckets: dict[str, dict[str, Any]] = {}
     weekdays: dict[str, int] = {}
     hours: dict[str, int] = {}
@@ -1177,7 +1178,7 @@ def set_consent(store, akousma_id: str, consent_status: str, rights_note: str | 
 
 def stats(store) -> dict[str, Any]:
     rows = store.conn.execute(
-        "SELECT originating_app, origin, COUNT(*) AS n FROM akousmata GROUP BY originating_app, origin"
+        "SELECT originating_app, origin, COUNT(*) AS n FROM akousmata WHERE coalesce(json_extract(record,'$.record_kind'),'') <> 'representation_record' GROUP BY originating_app, origin"
     ).fetchall()
     by_app: dict[str, int] = {}
     by_origin: dict[str, int] = {}
@@ -1186,7 +1187,7 @@ def stats(store) -> dict[str, Any]:
         total += row["n"]
         by_app[row["originating_app"] or "unknown"] = by_app.get(row["originating_app"] or "unknown", 0) + row["n"]
         by_origin[row["origin"] or "unknown"] = by_origin.get(row["origin"] or "unknown", 0) + row["n"]
-    latest = store.conn.execute("SELECT MAX(created_at) AS m FROM akousmata").fetchone()
+    latest = store.conn.execute("SELECT MAX(created_at) AS m FROM akousmata WHERE coalesce(json_extract(record,'$.record_kind'),'') <> 'representation_record'").fetchone()
     accountability = store.conn.execute(
         """SELECT COUNT(*) AS accountable,
                   SUM(CASE WHEN disagreement_count > 0 THEN 1 ELSE 0 END) AS with_disagreement,
