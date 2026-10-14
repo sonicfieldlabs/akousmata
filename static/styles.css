@@ -39,6 +39,16 @@ a { color: inherit; }
 
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 4px; }
 
+#inscriptions .inscription-layout { display: grid; grid-template-columns: minmax(180px, 24%) minmax(0, 1fr); gap: 28px; }
+#inscriptions .inscription-record { display: block; width: 100%; text-align: left; white-space: pre-line; border: 0; border-bottom: 1px solid var(--line); background: transparent; padding: 16px 8px; cursor: pointer; }
+#inscriptions .inscription-record:hover { background: var(--sel); }
+#inscriptions .inscription-artifact { border-top: 1px solid var(--line); padding: 18px 0; }
+#inscriptions .inscription-artifact h3 { font-size: 16px; margin: 0 0 10px; }
+#inscriptions .inscription-text { font-family: var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; padding: 24px 0; line-height: 1.7; }
+#inscriptions .inscription-metadata { font: 12px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+#inscriptions .inscription-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 18px 0; }
+@media (max-width: 700px) { #inscriptions .inscription-layout { grid-template-columns: 1fr; } #inscriptions .top { flex-wrap: wrap; } }
+
 .app { padding: 14px 22px 44px; display: flex; flex-direction: column; }
 
 /* header */
@@ -230,3 +240,6 @@ audio { width: 100%; margin: 8px 0; }
 #graph-walk p { margin: .65rem 0; }
 #tab-graph .graph-legend { flex-wrap: wrap; }
 #graph-history { max-width: min(24rem, 75vw); }
+.skip-link { position: fixed; z-index: 100; left: 12px; top: 12px; padding: 12px; color: var(--ink); background: var(--paper, white); border: 2px solid currentColor; transform: translateY(-200%); }
+.skip-link:focus { transform: translateY(0); }
+@media print { .skip-link { display: none; } }

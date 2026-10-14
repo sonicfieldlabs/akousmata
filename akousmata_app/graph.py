@@ -13,7 +13,8 @@ from akousmata_app.records import summary_line
 
 
 def _restricted(record):
-    return record.get("provenance", {}).get("consent_status") == "restricted"
+    return (record.get("record_kind") == "representation_record" or
+            record.get("provenance", {}).get("consent_status") == "restricted")
 
 
 def _edges(store, record, cap):
@@ -145,7 +146,7 @@ def full_graph(store, *, limit=400):
     seeds = [
         r[0]
         for r in store.conn.execute(
-            "SELECT akousma_id FROM akousmata ORDER BY created_at DESC,akousma_id LIMIT ?",
+            "SELECT akousma_id FROM akousmata WHERE coalesce(json_extract(record,'$.record_kind'),'') <> 'representation_record' ORDER BY created_at DESC,akousma_id LIMIT ?",
             (limit + 1,),
         )
     ]

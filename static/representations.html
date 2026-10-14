@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Inscriptions · Akousmata</title>
+  <link rel="stylesheet" href="static/styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#inscription-detail">Skip to the selected inscription</a>
+  <div class="app" id="inscriptions">
+    <header class="top"><h1>akousmata</h1><span class="sub">inscriptions and textual works</span><span class="spacer"></span><a href="./">Library</a></header>
+    <p>Read retained texts, scores and data beside the works made from them. A written encounter can remain written.</p>
+    <div class="inscription-tools">
+      <form id="record-search"><label>Search record metadata <input id="record-query" maxlength="200" type="search" /></label><button class="btn" type="submit">Search</button></form>
+      <label>Form <select id="form"><option value="">All forms</option><option>text</option><option>notation</option><option>midi</option><option>data</option><option>morse</option><option>glyphs</option><option>code</option></select></label>
+      <label>Output <select id="output-kind"><option value="">All records</option><option value="work">Works</option><option value="account">Accounts</option></select></label>
+      <button class="btn" id="reload" type="button">Refresh</button>
+      <button class="btn" id="older" type="button" disabled>Older records</button>
+    </div>
+    <p id="status" role="status" aria-live="polite">Loading permitted records…</p>
+    <div class="inscription-layout">
+      <nav id="inscription-list" aria-label="Retained inscription records"></nav>
+      <main id="inscription-detail" tabindex="-1" aria-label="Selected inscription"><p>Select a record to read its sources and outputs.</p></main>
+    </div>
+    <noscript>This reader needs JavaScript. The owner API also serves these records at api/representations.</noscript>
+  </div>
+  <script type="module" src="static/representations.js"></script>
+</body>
+</html>

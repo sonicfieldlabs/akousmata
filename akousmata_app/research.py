@@ -55,7 +55,7 @@ class ResearchSession:
         found: dict[str, dict[str, Any]] = {}
 
         def take(record: dict[str, Any] | None, why: str) -> None:
-            if record and record["akousma_id"] not in found:
+            if record and record.get("record_kind") != "representation_record" and record["akousma_id"] not in found:
                 found[record["akousma_id"]] = record
                 self.log("gather", f"{record['akousma_id']} — {summary_line(record)[:70]} ({why})")
 
@@ -137,7 +137,7 @@ class ResearchSession:
             wanted = {rid for rid in wiki._WIKILINK_RE.findall(note) if rid[0] == "record"}
             for _, rid in list(wanted)[:6]:
                 record = store.get(rid.strip())
-                if record is not None and all(r["akousma_id"] != record["akousma_id"] for r in corpus):
+                if record is not None and record.get("record_kind") != "representation_record" and all(r["akousma_id"] != record["akousma_id"] for r in corpus):
                     corpus.append(record)
                     self.log("gather", f"followed [[record:{record['akousma_id']}]]")
         self.log("think", "synthesizing")
