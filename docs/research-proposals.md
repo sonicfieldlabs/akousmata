@@ -1,6 +1,8 @@
 # Canonical relation indexing and reviewed research
 
-Unreleased local K6/K9/O18 integration. The owner service reuses Earworm's
+K6/K9/O18 is included in Akousmata 0.9.1 (GitHub release of 14 October 2026; not
+on PyPI); the exact installed/loaded owner remains a separate qualification.
+The owner service reuses Earworm's
 `relation_edges` index, AKOUO A11 and the existing research module and watcher.
 
 ## Index and migration

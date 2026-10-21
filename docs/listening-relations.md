@@ -1,6 +1,7 @@
 # Listening relationships in the owner navigator
 
-Unreleased local implementation. The record detail view adds “who listened to whom”
+Included in Akousmata 0.9.1 (GitHub release of 14 October 2026; not on PyPI);
+installed/loaded owner qualification remains separate. The record detail view adds “who listened to whom”
 and the owner wiki uses the same read-only projection. Existing producer records,
 pass identities, claim categories and additive human revisions remain unchanged.
 
