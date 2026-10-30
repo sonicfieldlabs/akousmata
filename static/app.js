@@ -56,7 +56,7 @@ async function apiForm(path, form) {
 
 /* ── tabs ─────────────────────────────────────────────────────────────── */
 
-const TABS = ["library", "constellations", "timeline", "graph", "map", "wiki", "diary", "research", "audit", "settings"];
+const TABS = ["library", "constellations", "timeline", "runs", "graph", "map", "wiki", "diary", "research", "audit", "settings"];
 
 $("tabs").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-tab]");
@@ -66,6 +66,7 @@ $("tabs").addEventListener("click", (event) => {
   for (const name of TABS) $(`tab-${name}`).hidden = name !== state.tab;
   if (state.tab === "constellations") loadConstellations();
   if (state.tab === "timeline") loadTimeline();
+  if (state.tab === "runs") loadRuns();
   if (state.tab === "graph") loadGraph(state.selected || null);
   if (state.tab === "map") loadMap();
   if (state.tab === "wiki") loadWiki();
@@ -1103,6 +1104,119 @@ $("c-create").addEventListener("click", async () => {
 });
 
 /* ── timeline ─────────────────────────────────────────────────────────── */
+
+/* ── runs: cords, knots and ties ──────────────────────────────────────── */
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+const svgEl = (tag, attrs = {}, cls) => {
+  const node = document.createElementNS(SVG_NS, tag);
+  for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, String(value));
+  if (cls) node.setAttribute("class", cls);
+  return node;
+};
+const LAYER_GLYPHS = { general: "●", focused: "◆", corrective: "○", sounding: "▲", recall: "□", closing: "▮" };
+
+function knot(layer, x, y, executed) {
+  const cls = "knot" + (["corrective", "recall"].includes(layer) ? " open" : "") + (executed ? "" : " unexecuted");
+  if (layer === "focused") return svgEl("path", { d: `M${x} ${y - 6}L${x + 6} ${y}L${x} ${y + 6}L${x - 6} ${y}Z` }, cls);
+  if (layer === "sounding") return svgEl("path", { d: `M${x} ${y - 6}L${x + 6} ${y + 5}L${x - 6} ${y + 5}Z` }, cls);
+  if (layer === "recall") return svgEl("rect", { x: x - 5, y: y - 5, width: 10, height: 10 }, cls);
+  if (layer === "closing") return svgEl("rect", { x: x - 2, y: y - 7, width: 4, height: 14 }, cls);
+  return svgEl("circle", { cx: x, cy: y, r: layer === "corrective" ? 5 : 5.5 }, cls);
+}
+
+function drawRun(steps) {
+  const wrap = $("runs-figure");
+  wrap.replaceChildren();
+  if (!steps.length) { wrap.append(el("div", "empty", "this run's records carry no circuit yet")); return; }
+  const sources = [...new Set(steps.map((s) => s.source_key))];
+  const left = 150, gap = 26, rowH = 34, top = 22;
+  const width = left + steps.length * gap + 30, height = top + sources.length * rowH;
+  const svg = svgEl("svg", { width, height, viewBox: `0 0 ${width} ${height}`, role: "img", "aria-label": `${steps.length} moves across ${sources.length} sources` });
+  const y = (source) => top + sources.indexOf(source) * rowH;
+  for (const source of sources) {
+    svg.append(svgEl("line", { x1: left - 8, x2: width - 10, y1: y(source), y2: y(source) }, "cord"));
+    const label = svgEl("text", { x: 4, y: y(source) + 4 }, "cord-label");
+    label.textContent = source.length > 22 ? source.slice(0, 21) + "…" : source;
+    svg.append(label);
+  }
+  steps.forEach((step, index) => {
+    const x = left + index * gap, cy = y(step.source_key);
+    const previous = steps[index - 1];
+    if (previous && previous.source_key !== step.source_key) {
+      const px = left + (index - 1) * gap;
+      svg.append(svgEl("path", { d: `M${px} ${y(previous.source_key)} C${px + gap / 2} ${y(previous.source_key)} ${x - gap / 2} ${cy} ${x} ${cy}` }, "tie"));
+    }
+    const mark = knot(step.layer, x, cy, step.status === "executed");
+    const title = svgEl("title");
+    title.textContent = `${step.at} · ${step.move.replaceAll("_", " ")} · ${step.layer}${step.primary_mode ? " · " + step.primary_mode : ""} · ${step.decider_kind}:${step.decider} · ${step.status}`;
+    mark.append(title);
+    svg.append(mark);
+  });
+  wrap.append(svg);
+}
+
+function drawRunMemory(memory) {
+  const box = $("runs-memory");
+  box.replaceChildren();
+  if (!memory) { box.append(el("span", "", "no run memory kept for this run")); return; }
+  const add = (label, value) => { const item = el("span", "", label + " "); item.append(el("strong", "", String(value))); box.append(item); };
+  add("windows", memory.totals.windows);
+  add("moves", memory.totals.steps);
+  add("sources", Object.keys(memory.sources).length);
+  for (const [move, count] of Object.entries(memory.totals.moves || {})) add(move.replaceAll("_", " "), count);
+  if (memory.current_source) add("now at", memory.current_source);
+}
+
+function drawRunTable(steps) {
+  const body = $("runs-table").querySelector("tbody");
+  body.replaceChildren();
+  for (const step of steps) {
+    const row = el("tr");
+    const cells = [
+      [step.at.replace("T", " ").replace(/\.\d+/, "").replace("+00:00", "Z"), "mono"],
+      [step.source_key, "mono"],
+      [step.move.replaceAll("_", " ")],
+      [`${LAYER_GLYPHS[step.layer] || "·"} ${step.layer}`],
+      [step.primary_mode ? step.primary_mode.replace("-listening", "") : "—"],
+      [step.confidence || "—"],
+      [`${step.decider_kind}: ${step.decider}`],
+      [step.status],
+    ];
+    for (const [text, cls] of cells) row.append(el("td", cls || "", text));
+    body.append(row);
+  }
+}
+
+async function showRun(sessionId) {
+  if (!sessionId) return;
+  const data = await api(`/api/runs/${encodeURIComponent(sessionId)}`);
+  $("runs-status").textContent = `${data.steps.length} moves`;
+  drawRun(data.steps);
+  drawRunMemory(data.memory);
+  drawRunTable(data.steps);
+}
+
+async function loadRuns() {
+  const select = $("runs-select");
+  const { runs } = await api("/api/runs");
+  const current = select.value;
+  select.replaceChildren();
+  if (!runs.length) {
+    select.append(el("option", "", "no runs kept yet"));
+    $("runs-status").textContent = "";
+    drawRun([]); drawRunMemory(null); drawRunTable([]);
+    return;
+  }
+  for (const run of runs) {
+    const option = el("option", "", `${run.session_id} · ${run.windows} windows · ${run.sources} sources`);
+    option.value = run.session_id;
+    select.append(option);
+  }
+  select.value = runs.some((r) => r.session_id === current) ? current : runs[0].session_id;
+  await showRun(select.value);
+}
+$("runs-select").addEventListener("change", () => showRun($("runs-select").value).catch((error) => toast(error.message)));
 
 async function loadTimeline() {
   const data = await api(`/api/timeline?bucket=${$("tl-bucket").value}`);

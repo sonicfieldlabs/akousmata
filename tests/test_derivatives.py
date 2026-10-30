@@ -142,3 +142,28 @@ def test_publication_rollback_and_crash_recovery(tmp_path):
         (tmp_path / '.spectral-transactions' / 'crash.json').write_text(json.dumps({'created':[name]}))
         recover_derivatives(store)
         assert read_derivative(store, record['akousma_id'], 'view:1') == payload
+
+
+def test_open_store_recovers_only_what_an_interrupted_publication_left(tmp_path, monkeypatch):
+    import akousmata_app.derivatives as derivatives
+    from akousmata_app.paths import open_store, spectral_recovery_pending
+
+    calls = []
+    monkeypatch.setattr(derivatives, 'recover_derivatives', lambda store: calls.append(store.root))
+    # The journal folder outlives every publication; by itself it asks for nothing.
+    (tmp_path / '.spectral-transactions').mkdir()
+    (tmp_path / 'objects' / 'ab').mkdir(parents=True)
+    assert not spectral_recovery_pending(tmp_path)
+    open_store(tmp_path).close()
+    assert calls == []
+    # A journal asks for recovery.
+    (tmp_path / '.spectral-transactions' / 'crash.json').write_text('{"created": []}')
+    assert spectral_recovery_pending(tmp_path)
+    open_store(tmp_path).close()
+    assert len(calls) == 1
+    # So does a staged object, at the top level or under a source shard.
+    (tmp_path / '.spectral-transactions' / 'crash.json').unlink()
+    (tmp_path / 'objects' / 'ab' / '.spectral-x1').write_bytes(b'staged')
+    assert spectral_recovery_pending(tmp_path)
+    open_store(tmp_path).close()
+    assert len(calls) == 2
