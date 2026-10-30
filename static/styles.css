@@ -243,3 +243,19 @@ audio { width: 100%; margin: 8px 0; }
 .skip-link { position: fixed; z-index: 100; left: 12px; top: 12px; padding: 12px; color: var(--ink); background: var(--paper, white); border: 2px solid currentColor; transform: translateY(-200%); }
 .skip-link:focus { transform: translateY(0); }
 @media print { .skip-link { display: none; } }
+
+/* runs: a run as cords and knots */
+.runs-figure { overflow-x: auto; background: var(--ctl); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; }
+.runs-figure svg { display: block; }
+.runs-figure .cord { stroke: var(--soft); stroke-width: 1.5; }
+.runs-figure .cord-label { fill: var(--muted); font-size: 12px; }
+.runs-figure .knot { fill: var(--ink); stroke: var(--ink); stroke-width: 1.5; }
+.runs-figure .knot.open { fill: var(--ctl); }
+.runs-figure .knot.unexecuted { opacity: 0.4; }
+.runs-figure .tie { stroke: var(--faint); stroke-width: 1; stroke-dasharray: 3 3; fill: none; }
+.runs-memory { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 10px 2px; color: var(--muted); font-size: 13px; }
+.runs-memory strong { color: var(--ink); font-weight: 600; }
+.runs-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 6px; }
+.runs-table th, .runs-table td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.runs-table th { color: var(--muted); font-weight: 500; }
+.runs-table td.mono { font-family: var(--mono); font-size: 12px; }
