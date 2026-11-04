@@ -23,7 +23,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Streamin
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from akousmata_app import AKOUSMATA_CONTRACT, __version__, constellations, exports, graph, publication, records, research, similar, watcher, wiki
+from akousmata_app import AKOUSMATA_CONTRACT, __version__, circuits, constellations, exports, graph, publication, records, research, similar, watcher, wiki
 from akousmata_app.llm import validate_http_url
 from akousmata_app.paths import open_store, store_root
 from akousmata_app.representations import build_router as representation_router
@@ -741,6 +741,78 @@ def get_graph(focus: str | None = None, depth: int = 2, limit: int = 400) -> dic
         if focus:
             return graph.neighborhood(store, focus, depth=max(1, min(depth, 4)), limit=max(10, min(limit, 500)))
         return graph.full_graph(store, limit=max(10, min(limit, 800)))
+    finally:
+        store.close()
+
+
+class RunMemoryWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    memory: dict[str, Any]
+    expected_revision: int | None = Field(default=None, ge=0)
+
+
+@app.get("/api/runs")
+def list_runs(limit: int = Query(default=100, ge=1, le=1000)) -> dict[str, Any]:
+    """Stored run memories, most recently updated first."""
+    store = _store()
+    try:
+        return circuits.runs(store, limit=limit)
+    finally:
+        store.close()
+
+
+@app.get("/api/runs/{session_id}")
+def run_detail(session_id: str, limit: int = Query(default=2000, ge=1, le=5000)) -> dict[str, Any]:
+    """One run: its memory and every circuit step its records carry, in time order."""
+    store = _store()
+    try:
+        found = circuits.run_detail(store, session_id, limit=limit)
+        if found is None:
+            raise HTTPException(status_code=404, detail=f"run not found: {session_id}")
+        return found
+    finally:
+        store.close()
+
+
+@app.put("/api/runs/{session_id}/memory")
+def put_run_memory(session_id: str, body: RunMemoryWrite) -> dict[str, Any]:
+    """Keep a run's memory, compare-and-set on the revision the writer read."""
+    if body.memory.get("session_id") != session_id:
+        raise HTTPException(status_code=400, detail="the memory names another run")
+    store = _store()
+    try:
+        return circuits.put_memory(store, body.memory, expected_revision=body.expected_revision)
+    except ValueError as exc:
+        status = 409 if "revision" in str(exc) or "only moves forward" in str(exc) else 422
+        raise HTTPException(status_code=status, detail=str(exc)) from exc
+    finally:
+        store.close()
+
+
+@app.get("/api/circuits")
+def list_circuit_steps(
+    source_key: str = Query(min_length=1, max_length=255),
+    move: str | None = Query(default=None, max_length=40),
+    limit: int = Query(default=500, ge=1, le=5000),
+) -> dict[str, Any]:
+    """Recall: every move made at one source, across runs."""
+    store = _store()
+    try:
+        return circuits.source_steps(store, source_key, move=move, limit=limit)
+    finally:
+        store.close()
+
+
+@app.get("/api/records/{akousma_id}/circuit")
+def record_circuit(akousma_id: str) -> dict[str, Any]:
+    """One record's circuit, with the availability of the records its moves name."""
+    store = _store()
+    try:
+        found = circuits.record_circuit(store, akousma_id)
+        if found is None:
+            raise HTTPException(status_code=404, detail=f"akousma not found: {akousma_id}")
+        return found
     finally:
         store.close()
 

@@ -69,6 +69,23 @@ def ensure_pyakousma() -> None:
             return
 
 
+def spectral_recovery_pending(root: str | Path) -> bool:
+    """Whether an interrupted spectral publication left a journal or a staged object.
+
+    The journal folder outlives every publication, so its existence alone is not a reason to
+    recover. Recovery takes the derivatives lock and rereads every record; doing it on each
+    opening serialized every reader of a store behind it (30 October 2026).
+    """
+    root = Path(root)
+    journals = root / ".spectral-transactions"
+    if journals.is_dir() and any(journals.glob("*.json")):
+        return True
+    objects = root / "objects"
+    return any(
+        path.is_file() for path in (*objects.glob(".spectral-*"), *objects.glob("??/.spectral-*"))
+    )
+
+
 def open_store(root: str | Path | None = None):
     ensure_pyakousma()
     try:
@@ -82,7 +99,7 @@ def open_store(root: str | Path | None = None):
     store = SpectralStore(root or store_root())
     from akousmata_app.relation_index import ensure
     try:
-        if (Path(store.root) / '.spectral-transactions').exists():
+        if spectral_recovery_pending(store.root):
             from akousmata_app.derivatives import recover_derivatives
             recover_derivatives(store)
         ensure(store)

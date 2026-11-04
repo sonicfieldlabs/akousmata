@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- 0.10.0: runs and listening circuits, on akousma 0.11.0. `GET /api/runs` lists
+  kept run memories; `GET /api/runs/{session}` returns one run's memory and every
+  circuit step its records carry, in time order; `PUT /api/runs/{session}/memory`
+  keeps a run's memory compare-and-set on the revision its writer read (a stale
+  writer gets 409, an invalid memory 422; the workspace binding applies);
+  `GET /api/circuits?source_key=` recalls every move made at one source across
+  runs; `GET /api/records/{id}/circuit` returns one record's circuit and whether
+  the records its moves name are available, forgotten or unavailable. A new Runs
+  tab draws a run as cords (sources), knots shaped by layer (general, focused,
+  corrective, sounding, recall, closing) and ties between sources, with the
+  run's memory and a table of its moves.
+
 - Package 0.8.3 with owner request admission and atomic validated settings.
 - Enforced owner host and mutation-origin admission across the application,
   preserving workspace binding. Default access requires loopback clients;

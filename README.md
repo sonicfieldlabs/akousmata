@@ -1,9 +1,11 @@
 # akousmata — the listening navigator
 
-The 0.9.1 source adds a private inscription reader and
-versioned owner APIs for text works, source registries, projections, comparison,
-selected export and prepared returns. Artifacts follow current shared material
-uses. See [Inscriptions and textual works](docs/representations.md).
+The 0.10.0 source keeps and recalls listening runs: a run's memory and the
+circuit of moves its records carry (`/api/runs`, `/api/circuits`, a Runs tab
+drawing a run as cords, knots and ties), on akousma 0.11.0. The 0.9.1 release
+(GitHub, 14 October 2026) added a private inscription reader and versioned owner
+APIs for text works, source registries, projections, comparison, selected export
+and prepared returns. See [Inscriptions and textual works](docs/representations.md).
 
 Centaur workspace launches set an immutable workspace ID and process generation.
 `GET /owner/identity` reads that binding without opening or migrating the store;
@@ -26,7 +28,7 @@ kinship ("belongs with"): variants, recurrences, series, responses. A heard
 memory carries attributable listenings; a gate that closed before hearing can
 instead carry a decision-only auditum without pretending that sound occurred.
 
-Source version: `0.9.1`, built on the published 0.8.3 line. The Phase 17
+Source version: `0.10.0`, on the 0.9.1 release (GitHub, 14 October 2026). The Phase 17
 inscription cohort is recorded in [the Phase 17 package record](docs/listening-md-phase17.md).
 
 ## What it is

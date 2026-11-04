@@ -21,6 +21,7 @@
       <button data-tab="library" class="active">Library</button>
       <button data-tab="constellations">Constellations</button>
       <button data-tab="timeline">Timeline</button>
+      <button data-tab="runs">Runs</button>
       <button data-tab="graph">Graph</button>
       <button data-tab="map">Map</button>
       <button data-tab="wiki">Wiki</button>
@@ -152,6 +153,21 @@
       </div>
       <p class="note" id="tl-rhythms"></p>
       <div id="timeline"></div>
+    </main>
+
+    <main id="tab-runs" hidden>
+      <div class="row" style="padding: 10px 0">
+        <select id="runs-select" aria-label="Run"></select>
+        <span class="note" id="runs-status"></span>
+      </div>
+      <p class="note">A run is drawn as cords, one per source; each knot is a move that produced a listening, shaped by its layer: ● general, ◆ focused, ○ corrective, ▲ sounding, □ recall, ▮ closing. A line between cords is a move to another source.</p>
+      <div id="runs-figure" class="runs-figure"></div>
+      <div id="runs-memory" class="runs-memory"></div>
+      <table class="runs-table" id="runs-table">
+        <caption class="note">Moves in time order</caption>
+        <thead><tr><th scope="col">time</th><th scope="col">source</th><th scope="col">move</th><th scope="col">layer</th><th scope="col">ear</th><th scope="col">confidence</th><th scope="col">decider</th><th scope="col">outcome</th></tr></thead>
+        <tbody></tbody>
+      </table>
     </main>
 
     <main id="tab-graph" hidden>
