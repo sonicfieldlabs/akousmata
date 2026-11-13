@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The navigator opens a tab from its address, and the Runs tab one run:
+  `/?tab=runs&run=<session id>`. An unknown tab or run leaves the page as it opens.
 - 0.10.0: runs and listening circuits, on akousma 0.11.0. `GET /api/runs` lists
   kept run memories; `GET /api/runs/{session}` returns one run's memory and every
   circuit step its records carry, in time order; `PUT /api/runs/{session}/memory`

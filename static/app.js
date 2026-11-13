@@ -1197,10 +1197,10 @@ async function showRun(sessionId) {
   drawRunTable(data.steps);
 }
 
-async function loadRuns() {
+async function loadRuns(wanted) {
   const select = $("runs-select");
   const { runs } = await api("/api/runs");
-  const current = select.value;
+  const current = wanted || select.value;
   select.replaceChildren();
   if (!runs.length) {
     select.append(el("option", "", "no runs kept yet"));
@@ -2091,6 +2091,13 @@ function watchChanges() {
   await loadRecords();
   await loadSettings();
   watchChanges();
+  // A host may open one run's view: /?tab=runs&run=<session id> (Khipu's History links here).
+  const params = new URLSearchParams(location.search);
+  const tab = params.get("tab");
+  if (tab && TABS.includes(tab)) {
+    $("tabs").querySelector(`button[data-tab="${tab}"]`)?.click();
+    if (tab === "runs" && params.get("run")) await loadRuns(params.get("run")).catch((error) => toast(error.message));
+  }
 })();
 
 $("clear-facets").addEventListener("click", () => { for(const kind of ACCESS_FACETS) $("f-"+kind).value=""; loadRecords(); });
