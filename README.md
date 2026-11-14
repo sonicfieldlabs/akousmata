@@ -1,6 +1,6 @@
 # akousmata — the listening navigator
 
-The 0.10.0 source keeps and recalls listening runs: a run's memory and the
+The 0.10.1 source opens a tab, and one run, from the page's address. The 0.10.0 release keeps and recalls listening runs: a run's memory and the
 circuit of moves its records carry (`/api/runs`, `/api/circuits`, a Runs tab
 drawing a run as cords, knots and ties), on akousma 0.11.0. The 0.9.1 release
 (GitHub, 14 October 2026) added a private inscription reader and versioned owner
@@ -28,7 +28,7 @@ kinship ("belongs with"): variants, recurrences, series, responses. A heard
 memory carries attributable listenings; a gate that closed before hearing can
 instead carry a decision-only auditum without pretending that sound occurred.
 
-Source version: `0.10.0`, on the 0.9.1 release (GitHub, 14 October 2026). The Phase 17
+Source version: `0.10.1`, on the 0.10.0 release (GitHub, 4 November 2026). The Phase 17
 inscription cohort is recorded in [the Phase 17 package record](docs/listening-md-phase17.md).
 
 ## What it is
