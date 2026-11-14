@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.10.1 — Unreleased
+
+- The navigator opens a tab from its address, and the Runs tab one run:
+  `/?tab=runs&run=<session id>`. An unknown tab or run leaves the page as it opens.
+
+## 0.10.0 — 2026-11-04
 
 - 0.10.0: runs and listening circuits, on akousma 0.11.0. `GET /api/runs` lists
   kept run memories; `GET /api/runs/{session}` returns one run's memory and every
@@ -13,6 +18,8 @@
   tab draws a run as cords (sources), knots shaped by layer (general, focused,
   corrective, sounding, recall, closing) and ties between sources, with the
   run's memory and a table of its moves.
+
+## 0.8.3 to 0.9.1 — 2026-10-09 to 2026-10-13
 
 - Package 0.8.3 with owner request admission and atomic validated settings.
 - Enforced owner host and mutation-origin admission across the application,
