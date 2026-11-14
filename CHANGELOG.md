@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.1 — Unreleased
+## 0.10.1 — 2026-11-14
 
 - The navigator opens a tab from its address, and the Runs tab one run:
   `/?tab=runs&run=<session id>`. An unknown tab or run leaves the page as it opens.
