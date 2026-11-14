@@ -1,6 +1,6 @@
 # akousmata — the listening navigator
 
-The 0.10.1 source opens a tab, and one run, from the page's address. The 0.10.0 release keeps and recalls listening runs: a run's memory and the
+The 0.10.1 release (GitHub, 14 November 2026) opens a tab, and one run, from the page's address. The 0.10.0 release keeps and recalls listening runs: a run's memory and the
 circuit of moves its records carry (`/api/runs`, `/api/circuits`, a Runs tab
 drawing a run as cords, knots and ties), on akousma 0.11.0. The 0.9.1 release
 (GitHub, 14 October 2026) added a private inscription reader and versioned owner
@@ -133,12 +133,15 @@ that protocol, not a fork of it.
 
 | Component | Version / contract | Relationship |
 | --- | --- | --- |
-| [Earworm](https://github.com/sonicfieldlabs/earworm) | `akousma >=0.8.4` / spec v1.8 | Canonical store with checked object resolution, no-audio listening accounts, listener-type/class indexes, and additive revision chains. |
+| [Earworm](https://github.com/sonicfieldlabs/earworm) | `akousma >=0.11.0` / spec v1.8 | Canonical store with checked object resolution, no-audio listening accounts, listener-type/class indexes, and additive revision chains. |
 | [AKOÚŌ](https://github.com/sonicfieldlabs/akouo) | `akouo/v0.9` | Owns claim taxonomy, provenance, temporal passes, route decisions, corpus disclosure, and situated context rendered by the navigator. |
-| [OÍDA](https://github.com/sonicfieldlabs/oida) | 0.11.0 / `oida/gateway/v0.6` | Writes typed machine and human listening records, links related accounts, and embeds the navigator at `/library/`. |
-| [GERM](https://github.com/sonicfieldlabs/germ) | 0.3.3 (optional) | Receives explicit sound, prompt, and lineage handoffs when separately configured. |
-| [Algophony](https://github.com/sonicfieldlabs/algophony) | 0.5.2 | Adds batch evaluation stamps and comparison relations. |
-| [ORAM](https://github.com/sonicfieldlabs/oram) | 0.4.1 | ORAM exports can enter the store through OÍDA or another akousma producer; ORAM is not a direct store writer. |
+| [OÍDA](https://github.com/sonicfieldlabs/oida) | `oida/gateway/v0.6` | Writes typed machine and human listening records, links related accounts, and embeds the navigator at `/library/`. |
+| [GERM](https://github.com/sonicfieldlabs/germ) | Optional; no version pinned | Receives explicit sound, prompt, and lineage handoffs when separately configured. |
+| [Algophony](https://github.com/sonicfieldlabs/algophony) | No version pinned | Adds batch evaluation stamps and comparison relations. |
+| [ORAM](https://github.com/sonicfieldlabs/oram) | No version pinned | ORAM exports can enter the store through OÍDA or another akousma producer; ORAM is not a direct store writer. |
+
+The versions in this table are the ones this source requires. Each project's current
+release is on [listening.md's Stack page](https://listening.md/stack).
 
 ## Run
 
